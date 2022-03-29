@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "map.h"
 
@@ -12,7 +13,6 @@
  *
  * valgrind --tool=memcheck ./a.out
  */
-#error Read comments above, then remove this line.
 
 
 /* Can be used to inform compiler about unused parameters (prevent
@@ -41,10 +41,10 @@ void print_less(key_t k UNUSED, value_t v, int aux)
   {
     printf("%s ", v);
   }
-}
+}  
 
 
-#define LOOPS 10
+#define LOOPS 5
 
 char* my_strdup(char* str)
 {
@@ -61,7 +61,7 @@ char* my_strdup(char* str)
 int main()
 {
   struct map container;
-  char input_buffer[10];
+  char input_buffer[5];
   char* obj;
   int id;
   int i;
@@ -82,35 +82,35 @@ int main()
   }
 
   /* remember to test with invalid keys (like 4711, or -1) */
-  for ( i = 0; i < LOOPS; ++i)
-  {
-    printf("Enter id to find value for: ");
-    scanf("%d", &id);
+  // for ( i = 0; i < LOOPS; ++i)
+  // {
+  //   printf("Enter id to find value for: ");
+  //   scanf("%d", &id);
 
-    /*! find the value for a key in the map */
-    obj = map_find(&container, id);
+  //   /*! find the value for a key in the map */
+  //   obj = map_find(&container, id);
 
-    /*! if it was found, display it */
-YOUR CODE
+  //   /*! if it was found, display it */
+  //   printf("%s\n", obj);
   
-    /* since we leave the value in the map we may use it again and
-     * should not free the memory */
-  }
+  //   /* since we leave the value in the map we may use it again and
+  //    * should not free the memory */
+  // }
 
   /* remember to test with invalid keys (like 4711, or -1) */
-  for ( i = 0; i < LOOPS; ++i)
-  {
-    printf("Enter id to remove value for: ");
-    scanf("%d", &id);
+  // for ( i = 0; i < LOOPS; ++i)
+  // {
+  //   printf("Enter id to remove value for: ");
+  //   scanf("%d", &id);
     
-    /*! find and remove a value for a key in the map */
-    obj = map_remove(&container, id);
+  //   /*! find and remove a value for a key in the map */
+  //   obj = map_remove(&container, id);
 
-    /*! if it was found, display it */
-YOUR CODE
-    /* since we removed the value from the map we will never use it again and
-     * must properly free the memory (if it was allocated) */
-  }
+  //   /*! if it was found, display it */
+  //   printf("%s\n", obj);
+  //   /* since we removed the value from the map we will never use it again and
+  //    * must properly free the memory (if it was allocated) */
+  // }
 
   /*! print all strings representing an integer less than N */
   printf("Will now display all values less than N. Choose N: ");
