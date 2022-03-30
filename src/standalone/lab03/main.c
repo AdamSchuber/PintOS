@@ -44,7 +44,7 @@ void print_less(key_t k UNUSED, value_t v, int aux)
 }  
 
 
-#define LOOPS 5
+#define LOOPS 6
 
 char* my_strdup(char* str)
 {
@@ -61,7 +61,7 @@ char* my_strdup(char* str)
 int main()
 {
   struct map container;
-  char input_buffer[5];
+  char input_buffer[6];
   char* obj;
   int id;
   int i;
@@ -80,6 +80,13 @@ int main()
     obj = my_strdup(input_buffer);
     id = map_insert(&container, obj);
   }
+
+  /* Trigger PANIC with find */
+  //obj = map_find(&container, 128);
+
+  /* Trigger PANIC with remove */
+  // obj = map_remove(&container, -1);
+
 
   /* remember to test with invalid keys (like 4711, or -1) */
   // for ( i = 0; i < LOOPS; ++i)

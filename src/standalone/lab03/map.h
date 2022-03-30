@@ -2,8 +2,11 @@
 #define MAP_H
 
 #include <stdbool.h>
+#include <stdlib.h>
 
 #define MAP_SIZE 128
+#define PANIC(message) do { printf("PANIC: %s\n", message); exit(1); } while (0)            // Varför inuti do-while?
+
 typedef char *value_t;
 typedef int key_t;
 

@@ -20,25 +20,22 @@ key_t map_insert(struct map *m, value_t v)
             return i;
         }
     }
-    // TODO: if reach end
+    return -1;  // If full, return -1. Maybe reasonable?
 }
 
 value_t map_find(struct map *m, key_t k)
 {
-    // check interval
-    // TODO: Let developer know wrong interval?
     if (k > MAP_SIZE - 1 || k < 0)
-        return NULL;
+        PANIC("CONSTRAINT ERROR");
 
     return m->content[k];
 }
 
 value_t map_remove(struct map *m, key_t k)
 {
-    if (k > MAP_SIZE - 1 || k < 0 || m->content[k] == NULL)
+    if (k > MAP_SIZE - 1 || k < 0)
     {
-        // TODO: SUS with seg fault
-        return NULL;
+        PANIC("CONSTRAINT ERROR");
     }
 
     value_t tmp = m->content[k];
