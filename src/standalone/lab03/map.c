@@ -35,7 +35,8 @@ value_t map_remove(struct map *m, key_t k)
 {
     if (k > MAP_SIZE - 1 || k < 0)
     {
-        PANIC("CONSTRAINT ERROR");
+        value_t null_ptr = NULL;
+        return null_ptr;
     }
 
     value_t tmp = m->content[k];
