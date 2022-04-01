@@ -20,7 +20,7 @@ key_t map_insert(struct map *m, value_t v)
             return i;
         }
     }
-    return -1;  // If full, return -1. Maybe reasonable?
+    return -1;
 }
 
 value_t map_find(struct map *m, key_t k)
