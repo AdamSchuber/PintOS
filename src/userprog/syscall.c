@@ -27,6 +27,20 @@ void handle_exit(int status)
   thread_exit();
 }
 
+void handle_read(int fd, void *buffer, unsigned size)
+{
+  for (int i = 0; i < size; ++i)
+  {
+    uint8_t input = input_getc();
+    buffer = &input;
+    putbuf(input);
+  }
+}
+
+void handle_write()
+{
+}
+
 void syscall_init(void)
 {
   intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
@@ -54,26 +68,40 @@ syscall_handler(struct intr_frame *f)
 {
   int32_t *esp = (int32_t *)f->esp;
 
-  switch (*esp)
+  switch (esp[0])
   {
-    case SYS_HALT:
-    {
-      handle_halt();
-      break;
-    }
-    case SYS_EXIT:
-    {
-      handle_exit(esp[1]);
-      break;
-    }
-    default:
-    {
-      printf("Executed an unknown system call!\n");
+  case SYS_HALT:
+  {
+    handle_halt();
+    break;
+  }
 
-      printf("Stack top + 0: %d\n", esp[0]);
-      printf("Stack top + 1: %d\n", esp[1]);
+  case SYS_EXIT:
+  {
+    handle_exit(esp[1]);
+    break;
+  }
 
-      thread_exit();
-    }
+  case SYS_READ:
+  {
+    handle_read(esp[1], esp[2], esp[3]);
+    break;
+  }
+
+  case SYS_WRITE:
+  {
+    handle_write();
+    break;
+  }
+
+  default:
+  {
+    printf("Executed an unknown system call!\n");
+
+    printf("Stack top + 0: %d\n", esp[0]);
+    printf("Stack top + 1: %d\n", esp[1]);
+
+    thread_exit();
+  }
   }
 }

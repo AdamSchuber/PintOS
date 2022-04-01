@@ -38,7 +38,7 @@ int getline(char *buf, int size)
 {
   int i;
   
-  for (i = 0; i < size-1; ++i)
+  for (i = 0; i < size-1; ++i)         
   {
     if (read(STDIN_FILENO, &buf[i], 1) != 1)
       break;
