@@ -23,7 +23,8 @@ void handle_halt(void)
 
 void handle_exit(int status)
 {
-
+  printf("%s%d\n", "THREAD_STATUS: ", status);
+  thread_exit();
 }
 
 void syscall_init(void)
@@ -62,8 +63,8 @@ syscall_handler(struct intr_frame *f)
     }
     case SYS_EXIT:
     {
-      // Vart ska status parametern komma från??
-      // handle_exit();
+      handle_exit(esp[1]);
+      break;
     }
     default:
     {

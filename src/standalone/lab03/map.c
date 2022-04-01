@@ -10,6 +10,7 @@ void map_init(struct map *m)
     }
 }
 
+// return -1 if full
 key_t map_insert(struct map *m, value_t v)
 {
     for (int i = 0; i < MAP_SIZE; ++i)
@@ -23,14 +24,18 @@ key_t map_insert(struct map *m, value_t v)
     return -1;
 }
 
+// return char* = NULL if no such element was find
 value_t map_find(struct map *m, key_t k)
 {
     if (k > MAP_SIZE - 1 || k < 0)
-        PANIC("CONSTRAINT ERROR");
-
+    {
+        value_t null_ptr = NULL;
+        return null_ptr;
+    }
     return m->content[k];
 }
 
+// return char* = NULL if no such element was find
 value_t map_remove(struct map *m, key_t k)
 {
     if (k > MAP_SIZE - 1 || k < 0)

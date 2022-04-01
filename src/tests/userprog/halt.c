@@ -6,6 +6,7 @@
 void
 test_main (void) 
 {
-  halt ();
+  halt();
+  // exit();
   fail ("should have halted");
 }
