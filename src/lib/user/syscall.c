@@ -65,17 +65,17 @@ void
 halt (void) 
 {
   syscall0 (SYS_HALT);
-  NOT_REACHED ();
+  NOT_REACHED ();     // Anropa syscall_handler?
 }
 
 void
 exit (int status)
 {
   syscall1 (SYS_EXIT, status);
-  NOT_REACHED ();
+  NOT_REACHED ();   // Anropa syscall_handler?
 }
 
-pid_t
+pid_t         // Varför får vi massor felindikationer?
 exec (const char *file)
 {
   return (pid_t) syscall1 (SYS_EXEC, file);
