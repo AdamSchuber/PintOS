@@ -36,16 +36,16 @@ int handle_read(int32_t fd, int32_t *buffer, unsigned size)
     int num_of_chars = 0;
     // Loops til size is reached, gets characters from input_getc
     // and puts them in buffer and putbuf() to display in program
-      for (int i = 0; i < (int)(size); ++i)
-      {
-        char input = input_getc();
-        // Changes \r to \n so that ENTER button works as intended
-        if (input == '\r')
-          input = '\n';
-        buffer[i] = input;
-        putbuf((const char *)(&input), 1);
-        ++num_of_chars;
-      }
+    for (int i = 0; i < (int)(size); ++i)
+    {
+      char input = input_getc();
+      // Changes \r to \n so that ENTER button works as intended
+      if (input == '\r')
+        input = '\n';
+      buffer[i] = input;
+      putbuf((const char *)(&input), 1);
+      ++num_of_chars;
+    }
     return num_of_chars;
   }
   return -1;
@@ -62,6 +62,19 @@ int handle_write(int32_t fd, int32_t *buffer, unsigned size)
   }
   return -1;
 }
+
+int handle_open(int32_t filename)
+{
+  // Check if filename exit in filesystem
+  if (filesys_open(filename) != -1)
+  {
+  
+  }
+
+  return -1;
+}
+
+/*########################################################################*/
 
 void syscall_init(void)
 {
@@ -115,6 +128,42 @@ syscall_handler(struct intr_frame *f)
   {
     // printf("%s\n", "ARRIVES AT SYS_WRITE!");
     f->eax = handle_write((int32_t)(esp[1]), (int32_t *)(esp[2]), (int32_t)(esp[3]));
+    break;
+  }
+
+  case SYS_OPEN:
+  {
+    f->eax = handle_open((int32_t)(esp[1]));
+    break;
+  }
+
+  case SYS_CLOSE:
+  {
+    break;
+  }
+
+  case SYS_REMOVE:
+  {
+    break;
+  }
+
+  case SYS_CREATE:
+  {
+    break;
+  }
+
+  case SYS_SEEK:
+  {
+    break;
+  }
+
+  case SYS_TELL:
+  {
+    break;
+  }
+
+  case SYS_FILESIZE:
+  {
     break;
   }
 
