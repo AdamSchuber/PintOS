@@ -27,18 +27,40 @@ void handle_exit(int status)
   thread_exit();
 }
 
-void handle_read(int fd, void *buffer, unsigned size)
+// Return -1 if filedescriptor is incorrect, or chars read if correct
+int handle_read(int32_t fd, int32_t *buffer, unsigned size)
 {
-  for (int i = 0; i < size; ++i)
+  // Checks if file descriptor is correct for read
+  if (fd == STDIN_FILENO)
   {
-    uint8_t input = input_getc();
-    buffer = &input;
-    putbuf(input);
+    int num_of_chars = 0;
+    // Loops til size is reached, gets characters from input_getc
+    // and puts them in buffer and putbuf() to display in program
+      for (int i = 0; i < (int)(size); ++i)
+      {
+        char input = input_getc();
+        // Changes \r to \n so that ENTER button works as intended
+        if (input == '\r')
+          input = '\n';
+        buffer[i] = input;
+        putbuf((const char *)(&input), 1);
+        ++num_of_chars;
+      }
+    return num_of_chars;
   }
+  return -1;
 }
 
-void handle_write()
+// Return -1 if filedescriptor is incorrect, or chars written if correct
+int handle_write(int32_t fd, int32_t *buffer, unsigned size)
 {
+  // Checks if file descriptor is correct for write
+  if (fd == STDOUT_FILENO)
+  {
+    putbuf((const char *)(buffer), size);
+    return size;
+  }
+  return -1;
 }
 
 void syscall_init(void)
@@ -84,13 +106,15 @@ syscall_handler(struct intr_frame *f)
 
   case SYS_READ:
   {
-    handle_read(esp[1], esp[2], esp[3]);
+    // printf("%s\n", "ARRIVES AT SYS_READ!");
+    f->eax = handle_read((int32_t)(esp[1]), (int32_t *)(esp[2]), (int32_t)(esp[3]));
     break;
   }
 
   case SYS_WRITE:
   {
-    handle_write();
+    // printf("%s\n", "ARRIVES AT SYS_WRITE!");
+    f->eax = handle_write((int32_t)(esp[1]), (int32_t *)(esp[2]), (int32_t)(esp[3]));
     break;
   }
 
