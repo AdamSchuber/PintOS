@@ -31,7 +31,7 @@ void handle_exit(int status)
 int handle_read(int32_t fd, int32_t *buffer, unsigned size)
 {
   // Checks if file descriptor is correct for read
-  if (fd == STDIN_FILENO)
+  if (fd != STDOUT_FILENO)
   {
     int num_of_chars = 0;
     // Loops til size is reached, gets characters from input_getc
@@ -43,7 +43,10 @@ int handle_read(int32_t fd, int32_t *buffer, unsigned size)
       if (input == '\r')
         input = '\n';
       buffer[i] = input;
-      putbuf((const char *)(&input), 1);
+      
+      if(fd == STDIN_FILENO)
+        putbuf((const char *)(&input), 1);
+      
       ++num_of_chars;
     }
     return num_of_chars;
@@ -55,7 +58,7 @@ int handle_read(int32_t fd, int32_t *buffer, unsigned size)
 int handle_write(int32_t fd, int32_t *buffer, unsigned size)
 {
   // Checks if file descriptor is correct for write
-  if (fd == STDOUT_FILENO)
+  if (fd == STDIN_FILENO)
   {
     putbuf((const char *)(buffer), size);
     return size;
@@ -63,15 +66,23 @@ int handle_write(int32_t fd, int32_t *buffer, unsigned size)
   return -1;
 }
 
-int handle_open(int32_t filename)
+int handle_open(int32_t *filename)
 {
   // Check if filename exit in filesystem
-  if (filesys_open(filename) != -1)
+  struct file *file_ptr = filesys_open((char *)filename);
+  if (file_ptr != NULL)
   {
-  
+    int fd = map_insert(&thread_current()->open_file_table, file_ptr);
+    return fd;  // fd -1 if file-pointer already in open_file_table
   }
-
   return -1;
+}
+
+void handle_close(int fd)
+{
+  struct file* file_ptr = map_remove(&thread_current()->open_file_table, fd);
+  if (file_ptr != NULL)
+    filesys_close(file_ptr);
 }
 
 /*########################################################################*/
@@ -133,12 +144,13 @@ syscall_handler(struct intr_frame *f)
 
   case SYS_OPEN:
   {
-    f->eax = handle_open((int32_t)(esp[1]));
+    f->eax = handle_open((int32_t *)(esp[1]));
     break;
   }
 
   case SYS_CLOSE:
   {
+    handle_close((int32_t)(esp[1]));
     break;
   }
 

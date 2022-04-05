@@ -90,10 +90,10 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
-
+    struct map open_file_table;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-
+        
     /* YES! You may want to add stuff. But make note of point 2 above. */
 
 #ifdef USERPROG

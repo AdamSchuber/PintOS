@@ -25,7 +25,6 @@
 /* HACK defines code you must remove and implement in a proper way */
 #define HACK
 
-
 /* This function is called at boot time (threads/init.c) to initialize
  * the process subsystem. */
 void process_init(void)
@@ -73,6 +72,7 @@ process_execute (const char *command_line)
   /* LOCAL variable will cease existence when function return! */
   struct parameters_to_start_process arguments;
 
+
   debug("%s#%d: process_execute(\"%s\") ENTERED\n",
         thread_current()->name,
         thread_current()->tid,
@@ -94,7 +94,6 @@ process_execute (const char *command_line)
   /* AVOID bad stuff by turning off. YOU will fix this! */
   power_off();
   
-  
   /* WHICH thread may still be using this right now? */
   free(arguments.command_line);
 
@@ -103,6 +102,8 @@ process_execute (const char *command_line)
         thread_current()->tid,
         command_line, process_id);
 
+   /* Initiates the open file table for the thread/proccess*/
+   map_init(&thread_current()->open_file_table);
   /* MUST be -1 if `load' in `start_process' return false */
   return process_id;
 }
@@ -227,6 +228,12 @@ process_wait (int child_id)
    or initialized to something sane, or else that any such situation
    is detected.
 */
+
+void open_file_table_close(struct file* file)
+{
+   // Inkludera filesys?
+   file_close(file);
+}
   
 void
 process_cleanup (void)
@@ -234,6 +241,10 @@ process_cleanup (void)
   struct thread  *cur = thread_current ();
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
+
+   // Cleanup of open file table
+   map_for_each(&thread_current()->open_file_table, open_file_table_close);
+   
   
   debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
   
