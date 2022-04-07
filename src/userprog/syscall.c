@@ -13,6 +13,7 @@
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "devices/input.h"
+#include <lib/stdio.h>
 
 static void syscall_handler(struct intr_frame *);
 
@@ -28,7 +29,7 @@ void handle_exit(int status)
 }
 
 // Return -1 if filedescriptor is incorrect, or chars read if correct
-int handle_read(int32_t fd, int32_t *buffer, unsigned size)
+int handle_read(int32_t fd, char *buffer, unsigned size)
 {
   // Checks if file descriptor is correct for read
   if (fd != STDOUT_FILENO)
@@ -36,31 +37,54 @@ int handle_read(int32_t fd, int32_t *buffer, unsigned size)
     int num_of_chars = 0;
     // Loops til size is reached, gets characters from input_getc
     // and puts them in buffer and putbuf() to display in program
-    for (int i = 0; i < (int)(size); ++i)
+    if (fd == STDIN_FILENO)
     {
-      char input = input_getc();
-      // Changes \r to \n so that ENTER button works as intended
-      if (input == '\r')
-        input = '\n';
-      buffer[i] = input;
-      
-      if(fd == STDIN_FILENO)
+      for (int i = 0; i < (int)(size); ++i)
+      {
+        char input = input_getc();
+        // Changes \r to \n so that ENTER button works as intended
+        if (input == '\r')
+          input = '\n';
+        *(buffer + i) = input;
         putbuf((const char *)(&input), 1);
-      
-      ++num_of_chars;
+        ++num_of_chars;
+      }
+      return num_of_chars;
     }
-    return num_of_chars;
+    else
+    {
+      struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
+      if (file_ptr != NULL)
+      {
+        return file_read(file_ptr, buffer, size);
+      }
+    }
   }
   return -1;
 }
 
 // Return -1 if filedescriptor is incorrect, or chars written if correct
-int handle_write(int32_t fd, int32_t *buffer, unsigned size)
+int handle_write(int fd, int32_t *buffer, unsigned size)
 {
   // Checks if file descriptor is correct for write
-  if (fd == STDIN_FILENO)
+  if (fd != STDIN_FILENO)
   {
-    putbuf((const char *)(buffer), size);
+    if (fd == STDOUT_FILENO)
+    {
+      putbuf((const char *)(buffer), size);
+    }
+    else
+    {
+      struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
+      if (file_ptr != NULL)
+      {
+        file_write(file_ptr, (char *)(buffer), size);
+      }
+      else if (file_ptr == NULL)
+      {
+        return -1;
+      }
+    }
     return size;
   }
   return -1;
@@ -73,16 +97,55 @@ int handle_open(int32_t *filename)
   if (file_ptr != NULL)
   {
     int fd = map_insert(&thread_current()->open_file_table, file_ptr);
-    return fd;  // fd -1 if file-pointer already in open_file_table
+    if (fd < 0)
+      fd = -fd;
+    return fd;
   }
   return -1;
 }
 
 void handle_close(int fd)
 {
-  struct file* file_ptr = map_remove(&thread_current()->open_file_table, fd);
+  struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
+    if (file_ptr != NULL)
+    {
+      map_remove(&thread_current()->open_file_table, fd);
+      filesys_close(file_ptr);
+    }
+}
+
+bool handle_create(const char *file, unsigned initial_size)
+{
+  return filesys_create(file, initial_size);
+}
+
+bool handle_remove(const char *file)
+{
+  return filesys_remove(file);
+}
+
+void handle_seek(int fd, unsigned position)
+{
+  struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
   if (file_ptr != NULL)
-    filesys_close(file_ptr);
+    if (position <= (unsigned int)file_length(file_ptr))
+      file_seek(file_ptr, position);
+}
+
+unsigned handle_tell(int fd)
+{
+  struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
+  if (file_ptr != NULL)
+    return file_tell(file_ptr);
+  return -1;
+}
+
+int handle_filesize(int fd)
+{
+  struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
+  if (file_ptr != NULL)
+    return file_length(file_ptr);
+  return -1;
 }
 
 /*########################################################################*/
@@ -131,7 +194,7 @@ syscall_handler(struct intr_frame *f)
   case SYS_READ:
   {
     // printf("%s\n", "ARRIVES AT SYS_READ!");
-    f->eax = handle_read((int32_t)(esp[1]), (int32_t *)(esp[2]), (int32_t)(esp[3]));
+    f->eax = handle_read((int32_t)(esp[1]), (char *)(esp[2]), (int32_t)(esp[3]));
     break;
   }
 
@@ -154,28 +217,33 @@ syscall_handler(struct intr_frame *f)
     break;
   }
 
-  case SYS_REMOVE:
+  case SYS_CREATE:
   {
+    f->eax = handle_create((char *)(esp[1]), (int32_t)(esp[2]));
     break;
   }
 
-  case SYS_CREATE:
+  case SYS_REMOVE:
   {
+    f->eax = handle_remove((char *)(esp[1]));
     break;
   }
 
   case SYS_SEEK:
   {
+    handle_seek((int32_t)(esp[1]), (int32_t)(esp[2]));
     break;
   }
 
   case SYS_TELL:
   {
+    f->eax = handle_tell((int32_t)(esp[1]));
     break;
   }
 
   case SYS_FILESIZE:
   {
+    f->eax = handle_filesize((int32_t)(esp[1]));
     break;
   }
 

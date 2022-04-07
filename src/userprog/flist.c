@@ -15,14 +15,15 @@ void map_init(struct map *m)
     }
 }
 
-// return -1 if full
+// return -key_t if full to indicate that 
+// file is already in open file table
 key_t map_insert(struct map *m, value_t v)
 {
     for (int i = 2; i < MAP_SIZE; ++i)
     {
         if (v == m->content[i])
         {
-            return -1;
+            return -i;      
         }
         else if (m->content[i] == NULL)
         {
@@ -39,7 +40,7 @@ value_t map_find(struct map *m, key_t k)
     if (k > MAP_SIZE - 1 || k < 0)
     {
         value_t null_ptr = NULL;
-        return null_ptr;
+        return NULL;
     }
     return m->content[k];
 }

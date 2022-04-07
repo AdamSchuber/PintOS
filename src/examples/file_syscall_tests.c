@@ -19,7 +19,7 @@
    DONE: Fix verify seek past filesize
  */
 
-#include <stdio.h>
+#include <lib/stdio.h>
 #include <string.h>
 #include <syscall.h>
 
@@ -172,7 +172,6 @@ int main(int argc, char* argv[])
         result = read(id, buffer, 4);
         success = success && (result == 4);
         result = write(STDOUT_FILENO, buffer, 4);
-
         success = success && (memcmp(buffer, verify_buffer, 4) == 0);
       }
       result = write(STDOUT_FILENO, "\n", 1);
