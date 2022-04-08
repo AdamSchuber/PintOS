@@ -9,8 +9,8 @@ void handle_halt(void);
 void handle_exit(int status);
 
 int handle_read(int32_t fd, char * buffer, unsigned size);
-int handle_write(int32_t fd, int32_t *buffer, unsigned size);
-int handle_open(int32_t* filename);
+int handle_write(int32_t fd, char *buffer, unsigned size);
+int handle_open(const char* filename);
 void handle_close(int fd);
 
 bool handle_create(const char *file, unsigned initial_size);

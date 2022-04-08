@@ -29,7 +29,7 @@ void handle_exit(int status)
 }
 
 // Return -1 if filedescriptor is incorrect, or chars read if correct
-int handle_read(int32_t fd, char *buffer, unsigned size)
+int handle_read(int fd, char *buffer, unsigned size)
 {
   // Checks if file descriptor is correct for read
   if (fd != STDOUT_FILENO)
@@ -64,7 +64,7 @@ int handle_read(int32_t fd, char *buffer, unsigned size)
 }
 
 // Return -1 if filedescriptor is incorrect, or chars written if correct
-int handle_write(int fd, int32_t *buffer, unsigned size)
+int handle_write(int fd, char *buffer, unsigned size)
 {
   // Checks if file descriptor is correct for write
   if (fd != STDIN_FILENO)
@@ -90,16 +90,18 @@ int handle_write(int fd, int32_t *buffer, unsigned size)
   return -1;
 }
 
-int handle_open(int32_t *filename)
+int handle_open(const char *filename)
 {
   // Check if filename exit in filesystem
-  struct file *file_ptr = filesys_open((char *)filename);
+  struct file *file_ptr = filesys_open((char *)filename); 
   if (file_ptr != NULL)
   {
     int fd = map_insert(&thread_current()->open_file_table, file_ptr);
-    if (fd < 0)
-      fd = -fd;
     return fd;
+  }
+  else
+  {
+    filesys_close(file_ptr);
   }
   return -1;
 }
@@ -107,11 +109,11 @@ int handle_open(int32_t *filename)
 void handle_close(int fd)
 {
   struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
-    if (file_ptr != NULL)
-    {
-      map_remove(&thread_current()->open_file_table, fd);
-      filesys_close(file_ptr);
-    }
+  if (file_ptr != NULL)
+  {
+    map_remove(&thread_current()->open_file_table, fd);
+    filesys_close(file_ptr);
+  }
 }
 
 bool handle_create(const char *file, unsigned initial_size)
@@ -201,13 +203,13 @@ syscall_handler(struct intr_frame *f)
   case SYS_WRITE:
   {
     // printf("%s\n", "ARRIVES AT SYS_WRITE!");
-    f->eax = handle_write((int32_t)(esp[1]), (int32_t *)(esp[2]), (int32_t)(esp[3]));
+    f->eax = handle_write((int32_t)(esp[1]), (char *)(esp[2]), (int32_t)(esp[3]));
     break;
   }
 
   case SYS_OPEN:
   {
-    f->eax = handle_open((int32_t *)(esp[1]));
+    f->eax = handle_open((char *)(esp[1]));
     break;
   }
 
