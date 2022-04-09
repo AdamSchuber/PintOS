@@ -35,6 +35,8 @@ int handle_read(int fd, char *buffer, unsigned size)
   if (fd != STDOUT_FILENO)
   {
     int num_of_chars = 0;
+    // Enters if-block if fd is is standard input, else it is read
+    // as a regular file.
     // Loops til size is reached, gets characters from input_getc
     // and puts them in buffer and putbuf() to display in program
     if (fd == STDIN_FILENO)
@@ -69,6 +71,8 @@ int handle_write(int fd, char *buffer, unsigned size)
   // Checks if file descriptor is correct for write
   if (fd != STDIN_FILENO)
   {
+    // Enters if-block if fd is is standard output so it can write to screen,
+    // else it is written to as if it is a regular file.
     if (fd == STDOUT_FILENO)
     {
       putbuf((const char *)(buffer), size);
@@ -80,7 +84,7 @@ int handle_write(int fd, char *buffer, unsigned size)
       {
         file_write(file_ptr, (char *)(buffer), size);
       }
-      else if (file_ptr == NULL)
+      else
       {
         return -1;
       }
@@ -92,16 +96,18 @@ int handle_write(int fd, char *buffer, unsigned size)
 
 int handle_open(const char *filename)
 {
-  // Check if filename exit in filesystem
-  struct file *file_ptr = filesys_open((char *)filename); 
+  // Check if filename exists in filesystem, returns null if not
+  struct file *file_ptr = filesys_open((char *)filename);
   if (file_ptr != NULL)
   {
+    // Inserts file into the threads open filetable and is given a
+    // file descriptor
     int fd = map_insert(&thread_current()->open_file_table, file_ptr);
+
+    // If file table fails to insert, remove file from file system
+    if (fd == -1)
+      filesys_close(file_ptr);
     return fd;
-  }
-  else
-  {
-    filesys_close(file_ptr);
   }
   return -1;
 }
@@ -111,7 +117,10 @@ void handle_close(int fd)
   struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
   if (file_ptr != NULL)
   {
+    // Removes the file and descriptor from the table
     map_remove(&thread_current()->open_file_table, fd);
+    // Cloeses the file such that it does no longer exit in the
+    // file system
     filesys_close(file_ptr);
   }
 }
@@ -129,6 +138,8 @@ bool handle_remove(const char *file)
 void handle_seek(int fd, unsigned position)
 {
   struct file *file_ptr = map_find(&thread_current()->open_file_table, fd);
+  // Seek action will be carryed out as long as the seek position is
+  // not outside the given bounds of the file
   if (file_ptr != NULL)
     if (position <= (unsigned int)file_length(file_ptr))
       file_seek(file_ptr, position);
