@@ -193,73 +193,38 @@ syscall_handler(struct intr_frame *f)
   switch (esp[0])
   {
   case SYS_HALT:
-  {
     handle_halt();
     break;
-  }
-
   case SYS_EXIT:
-  {
     handle_exit(esp[1]);
     break;
-  }
-
   case SYS_READ:
-  {
-    // printf("%s\n", "ARRIVES AT SYS_READ!");
     f->eax = handle_read((int32_t)(esp[1]), (char *)(esp[2]), (int32_t)(esp[3]));
     break;
-  }
-
   case SYS_WRITE:
-  {
-    // printf("%s\n", "ARRIVES AT SYS_WRITE!");
     f->eax = handle_write((int32_t)(esp[1]), (char *)(esp[2]), (int32_t)(esp[3]));
     break;
-  }
-
   case SYS_OPEN:
-  {
     f->eax = handle_open((char *)(esp[1]));
     break;
-  }
-
   case SYS_CLOSE:
-  {
     handle_close((int32_t)(esp[1]));
     break;
-  }
-
   case SYS_CREATE:
-  {
     f->eax = handle_create((char *)(esp[1]), (int32_t)(esp[2]));
     break;
-  }
-
   case SYS_REMOVE:
-  {
     f->eax = handle_remove((char *)(esp[1]));
     break;
-  }
-
   case SYS_SEEK:
-  {
     handle_seek((int32_t)(esp[1]), (int32_t)(esp[2]));
     break;
-  }
-
   case SYS_TELL:
-  {
     f->eax = handle_tell((int32_t)(esp[1]));
     break;
-  }
-
   case SYS_FILESIZE:
-  {
     f->eax = handle_filesize((int32_t)(esp[1]));
     break;
-  }
-
   default:
   {
     printf("Executed an unknown system call!\n");
