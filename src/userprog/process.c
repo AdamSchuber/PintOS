@@ -59,7 +59,7 @@ start_process(struct parameters_to_start_process* parameters) NO_RETURN;
    process is loaded from the file specified in the COMMAND_LINE and
    started with the arguments on the COMMAND_LINE. The new thread may
    be scheduled (and may even exit) before process_execute() returns.
-   Returns the new process's thread id, or TID_ERROR if the thread
+   Returns the new process's thread id, or TID_ERROR if the threadp
    cannot be created. */
 int
 process_execute (const char *command_line) 
