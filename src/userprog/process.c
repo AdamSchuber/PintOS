@@ -1,3 +1,8 @@
+// kompilera och kör
+// make
+// pintos -v -k --fs-disk=2 -p ../examples/sumargv -a sumargv -- -f -q run 'sumargv 1 2'
+
+
 #include <debug.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,10 +51,12 @@ void process_print_list()
 {
 }
 
-
+// Kommunicera data mellan förälder- och barntråd
 struct parameters_to_start_process
 {
   char* command_line;
+  bool success;            //---
+  struct semaphore sema;   //---
 };
 
 static void
@@ -86,13 +93,14 @@ process_execute (const char *command_line)
   strlcpy_first_word (debug_name, command_line, 64);
   
   /* SCHEDULES function `start_process' to run (LATER) */
+  sema_init(&arguments.sema, 0);    //---
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
-
+  sema_down(&arguments.sema);       //---
   process_id = thread_id;
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
-  power_off();
+  //power_off(); Bortkommenterad
   
   /* WHICH thread may still be using this right now? */
   free(arguments.command_line);
@@ -166,13 +174,18 @@ start_process (struct parameters_to_start_process* parameters)
 //    dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
 
   }
+  else   //---
+  {
+     parameters->success = false;
+  }
 
   debug("%s#%d: start_process(\"%s\") DONE\n",
         thread_current()->name,
         thread_current()->tid,
         parameters->command_line);
   
-  
+  sema_up(&parameters->sema);    //---
+
   /* If load fail, quit. Load may fail for several reasons.
      Some simple examples:
      - File doeas not exist
@@ -231,7 +244,6 @@ process_wait (int child_id)
 
 void open_file_table_close(struct file* file)
 {
-   // Inkludera filesys?
    file_close(file);
 }
   
