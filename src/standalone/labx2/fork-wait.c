@@ -4,6 +4,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+/*
+SVAR:
+       1. barnprocessen fork-wait blev xterm och fick ett eget PID: 19462 (?)
+       2. Ingen information om en process tas bort innan föräldern till denne, termineras
+       3. waitid() väntar och kollar om barnprocessen identiferad av pid, har signalerat att den är
+          klar, om waitid() får signalen tar den ut returvärdet från barnprocessen.
+       4. ?
+*/
+
+
 /* The printf text serve as further comments. Read it. */
 
 int main(int argc, char* argv[])
