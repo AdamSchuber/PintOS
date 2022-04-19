@@ -55,8 +55,8 @@ void process_print_list()
 struct parameters_to_start_process
 {
   char* command_line;
-  bool success;            //---
-  struct semaphore sema;   //---
+  bool success;            //<---
+  struct semaphore sema;   //<---
 };
 
 static void
@@ -93,11 +93,16 @@ process_execute (const char *command_line)
   strlcpy_first_word (debug_name, command_line, 64);
   
   /* SCHEDULES function `start_process' to run (LATER) */
-  sema_init(&arguments.sema, 0);    //---
+  sema_init(&arguments.sema, 0);    //<---
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
-  sema_down(&arguments.sema);       //---
+  sema_down(&arguments.sema);       //<---
   process_id = thread_id;
+
+  if (!arguments.success)      //<---
+  {
+     process_id = -1;
+  }
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
   //power_off(); Bortkommenterad
@@ -174,7 +179,7 @@ start_process (struct parameters_to_start_process* parameters)
 //    dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
 
   }
-  else   //---
+  else   //<---
   {
      parameters->success = false;
   }
@@ -184,7 +189,7 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->tid,
         parameters->command_line);
   
-  sema_up(&parameters->sema);    //---
+  sema_up(&parameters->sema);    //<---
 
   /* If load fail, quit. Load may fail for several reasons.
      Some simple examples:
