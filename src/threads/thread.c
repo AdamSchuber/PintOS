@@ -188,7 +188,7 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
-
+  
   /* NO! I do not think there's any reason to modify this function. */
   
   ASSERT (function != NULL);
@@ -196,7 +196,7 @@ thread_create (const char *name, int priority,
   /* Allows to simulate a failure in palloc_get_page below. */
   if (DEBUG_thread_create_simulate_fail())
     return TID_ERROR;
-    
+
   /* Allocate thread. */
   t = palloc_get_page (PAL_ZERO);
   if (t == NULL)
@@ -228,6 +228,7 @@ thread_create (const char *name, int priority,
         thread_current()->name,
         thread_current()->tid,
         name, tid);
+
   return tid;
 }
 
