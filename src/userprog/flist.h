@@ -1,9 +1,6 @@
 #ifndef _MAP_H_
 #define _MAP_H_
 
-#ifndef _PLIST_H_
-#define _PLIST_H_
-
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -124,5 +121,3 @@ void map_remove_if(struct map *m,
  * where to declare and initialize it correctly. In both cases, consider
  * what size limit that may be appropriate.
  */
-
-#endif

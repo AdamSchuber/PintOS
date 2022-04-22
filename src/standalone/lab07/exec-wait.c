@@ -16,7 +16,6 @@ struct running_thread {
   // Den parameter som ska skickas till "do_work".
   int param;
 
-  // Semaphore
   struct semaphore sema;
 
   // Om tråden är klar: Resultatet som "do_work" har beräknat.

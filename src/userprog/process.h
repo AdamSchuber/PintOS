@@ -2,6 +2,10 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
+#include "plist.h" //<---
+
+struct plist global_plist;
+
 
 void process_init (void);
 void process_print_list (void);

@@ -32,6 +32,7 @@
  * the process subsystem. */
 void process_init(void)
 {
+   plist_init(&global_plist);
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -54,7 +55,8 @@ struct parameters_to_start_process
 {
   char* command_line;
   bool success;            
-  struct semaphore sema;   
+  struct semaphore sema;
+  int parent_tid;   
 };
 
 static void
@@ -93,7 +95,7 @@ process_execute (const char *command_line)
   /* SCHEDULES function `start_process' to run (LATER) */
   sema_init(&arguments.sema, 0);    
   thread_id = thread_create (debug_name, PRI_DEFAULT,
-                             (thread_func*)start_process, &arguments);
+                             (thread_func*)start_process, &arguments);     // Pass 
    
    if (thread_id == TID_ERROR)
    {
@@ -178,6 +180,11 @@ start_process (struct parameters_to_start_process* parameters)
     /* This uses a "reference" solution in assembler that you
        can replace with C-code if you wish. */
     if_.esp = setup_main_stack_asm(parameters->command_line, if_.esp);
+    
+    // TODO: get parent process id 
+
+    process_ptr new = process_info_init(thread_current()->tid, );    // Pass parent process id aswell
+    plist_insert(&global_plist, new);
     
     parameters->success = true; // Kanske?
     

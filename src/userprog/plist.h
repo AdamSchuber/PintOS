@@ -4,7 +4,47 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
+#define PLIST_SIZE 512
 
+typedef int pid_t;
+typedef int tid_t;
+
+struct process_info
+{
+    tid_t   tid;
+    pid_t   parent_pid;
+    int     exit_status;
+    bool    parent_is_running;
+    bool    is_running;
+    bool    valid_row;
+};
+
+typedef struct process_info* process_ptr;
+typedef int key_t;
+
+struct plist
+{
+    process_ptr content[PLIST_SIZE];
+};
+
+// TODO: parent thread id to parent process id 
+
+void plist_init(struct plist *m);
+
+void plist_insert(struct plist *m, process_ptr v);
+
+process_ptr process_info_init(tid_t tid, pid_t parent_pid);
+
+process_ptr plist_find(struct plist *m, key_t k);
+
+process_ptr plist_remove(struct plist *m, key_t k);
+
+void plist_for_each(struct plist *m,
+                  void (*exec)(process_ptr v));
+
+void plist_remove_if(struct plist *m,
+                   bool (*cond)(key_t k, process_ptr v, int aux),
+                   int aux);
 
 #endif /* PLIST_H */
 
