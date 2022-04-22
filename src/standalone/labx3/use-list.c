@@ -13,7 +13,6 @@
  * Then use the precomplied list.o:
  *  gcc -Wall -Wextra -std=gnu99 -pedantic -g use-list.c list.o
  */
-#error Read comments above, then remove this line.
 
 #include "../../lib/kernel/list.h"
 
@@ -21,7 +20,9 @@ int main()
 {
   int i, j;
   int N = 1000;
-
+  struct list int_list;
+  list_init(&int_list);
+  
   /* create a list */
   for (i = 2; i < N; ++i)
   {
