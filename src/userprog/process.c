@@ -42,12 +42,25 @@ void process_init(void)
  * from thread_exit - do not call cleanup twice! */
 void process_exit(int status UNUSED)
 {
+   printf("%s%d\n", "THREAD_STATUS: ", status);
+
+   // Set exit_status to status.
+   global_plist.content[plist_get_pid(&global_plist, (int)&thread_current()->tid)]->exit_status = status;
+   thread_exit();
 }
 
 /* Print a list of all running processes. The list shall include all
  * relevant debug information in a clean, readable format. */
 void process_print_list()
 {
+   printf("+-----------------------------------------------+");
+   printf("| pid | parent pid  | exit status | name        |");
+   printf("+-----------------------------------------------+");
+
+   for (int i = 0; i < PLIST_SIZE; i++)
+   {
+      plist_print(&global_plist, i);
+   }
 }
 
 // Kommunicera data mellan förälder- och barntråd
@@ -110,7 +123,6 @@ process_execute (const char *command_line)
   if (!arguments.success)      
   {
      process_id = -1;
-     //return -1 ?
   }
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
@@ -181,12 +193,12 @@ start_process (struct parameters_to_start_process* parameters)
        can replace with C-code if you wish. */
     if_.esp = setup_main_stack_asm(parameters->command_line, if_.esp);
     
-    // TODO: get parent process id 
-
-    process_ptr new = process_info_init(thread_current()->tid, );    // Pass parent process id aswell
+     
+     
+    process_ptr new = plist_process_info_init(thread_current()->tid, plist_get_pid(&global_plist, parameters->parent_tid), thread_current()->name);
     plist_insert(&global_plist, new);
     
-    parameters->success = true; // Kanske?
+    parameters->success = true;
     
     /* The stack and stack pointer should be setup correct just before
        the process start, so this is the place to dump stack content
@@ -267,7 +279,7 @@ void open_file_table_close(struct file* file)
 {
    file_close(file);
 }
-  
+
 void
 process_cleanup (void)
 {
@@ -275,9 +287,18 @@ process_cleanup (void)
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
 
-   // Cleanup of open file table
-   map_for_each(&thread_current()->open_file_table, open_file_table_close);
+  // Cleanup of open file table
+  map_for_each(&thread_current()->open_file_table, open_file_table_close);
    
+   // Set current proccess as inactive in plist
+  global_plist.content[plist_get_pid(&global_plist, (int)&thread_current()->tid)]->is_running = false;  
+  
+   // Loop and set all redundant entries as valid for removal
+  for (int i = 0; i < PLIST_SIZE; ++i) 
+  {
+     plist_remove_process(&global_plist, (int)&thread_current()->tid);
+  }
+
   
   debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
   

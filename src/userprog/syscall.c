@@ -14,8 +14,24 @@
 #include "userprog/process.h"
 #include "devices/input.h"
 #include <lib/stdio.h>
+#include "devices/timer.h"
 
 static void syscall_handler(struct intr_frame *);
+
+void handle_plist(void)
+{
+  process_print_list();
+}
+
+void handle_sleep(int millis)
+{
+  timer_msleep(millis);
+}
+
+int handle_exec(const char* command_line)
+{
+  return process_execute(command_line);
+}
 
 void handle_halt(void)
 {
@@ -24,8 +40,7 @@ void handle_halt(void)
 
 void handle_exit(int status)
 {
-  printf("%s%d\n", "THREAD_STATUS: ", status);
-  thread_exit();
+  process_exit(status);
 }
 
 // Return -1 if filedescriptor is incorrect, or chars read if correct
@@ -197,6 +212,15 @@ syscall_handler(struct intr_frame *f)
     break;
   case SYS_EXIT:
     handle_exit(esp[1]);
+    break;
+  case SYS_EXEC:
+    f->eax = handle_exec((const char*)(esp[1]));
+    break;
+  case SYS_SLEEP:
+    handle_sleep((int)(esp[1]));
+    break;
+  case SYS_PLIST:
+    handle_plist();
     break;
   case SYS_READ:
     f->eax = handle_read((int32_t)(esp[1]), (char *)(esp[2]), (int32_t)(esp[3]));

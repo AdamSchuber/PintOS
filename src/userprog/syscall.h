@@ -4,6 +4,10 @@
 #include <lib/stdbool.h>
 #include "filesys/file.h"
 
+void handle_plist(void);
+int handle_exec(const char* command_line);
+void handle_sleep(int millis);
+
 void syscall_init (void);
 void handle_halt(void);
 void handle_exit(int status);

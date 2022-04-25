@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "plist.h"
+#include <stdlib.h>
 
 void plist_init(struct plist *m)
 {
@@ -13,21 +14,48 @@ void plist_init(struct plist *m)
     }
 }
 
-process_ptr process_info_init( tid_t tid, pid_t parent_pid)
+process_ptr plist_process_info_init(tid_t tid, pid_t parent_pid, char *name)
 {
-    process_ptr this;
+    process_ptr this = malloc(sizeof(struct process_info));
     this->tid = tid;
     this->parent_pid = parent_pid;
+    this->exit_status = 999;
+    this->parent_is_running = true;
+    this->valid_row = false;
+    memcpy(this->name, name, sizeof(*name));
     return this;
 }
 
-// return -key_t if full to indicate that 
-// file is already in open file table
-key_t plist_insert(struct plist *m, process_ptr v)
+bool plist_parent_running(struct plist *m, pid_t parent_pid)
+{
+    return m->content[parent_pid]->is_running;
+}
+
+pid_t plist_get_pid(struct plist *m, tid_t tid)
 {
     for (int i = 0; i < PLIST_SIZE; ++i)
     {
-        if (m->content[i] == NULL)
+        if (tid == m->content[i]->tid)
+            return i;
+    }
+    return -1; //<--- No such process
+}
+
+void plist_print(struct plist *m, pid_t pid)
+{
+    if (m->content[pid]->valid_row != true)
+    {
+        printf("| %d    | %d       | %d       | %s |\n", pid, m->content[pid]->parent_pid, m->content[pid]->exit_status, m->content[pid]->name);
+    }
+}
+
+// return -key_t if full to indicate that
+// file is already in global plist
+pid_t plist_insert(struct plist *m, process_ptr v)
+{
+    for (int i = 0; i < PLIST_SIZE; ++i)
+    {
+        if (m->content[i] == NULL || m->content[i]->valid_row == true)
         {
             m->content[i] = v;
             return i;
@@ -62,7 +90,7 @@ process_ptr plist_remove(struct plist *m, key_t k)
 }
 
 void plist_for_each(struct plist *m,
-                  void (*exec)(process_ptr v))
+                    void (*exec)(process_ptr v))
 {
     for (int i = 0; i < PLIST_SIZE; ++i)
     {
@@ -71,17 +99,18 @@ void plist_for_each(struct plist *m,
     }
 }
 
-void plist_remove_if(struct plist *m,
-                   bool (*cond)(key_t k, process_ptr v, int aux),
-                   int aux)
+void plist_remove_process(struct plist *m, tid_t curr_t)
 {
-    for (int i = 0; i < PLIST_SIZE; ++i)
+    // uppdatera parent_running_status
+    pid_t curr_p = plist_get_pid(m, curr_t);
+    if (curr_p != -1)
     {
-        if (m->content[i] != NULL)
-        {
-            if ((*cond)(i, m->content[i], aux))
-                plist_remove(m, i);
-        }
+        bool parent_status = plist_parent_running(m, m->content[curr_p]->parent_pid);
+        m->content[curr_p]->parent_is_running = parent_status;
+
+        // sätt valid_row till true om is_running och parent_is_running är false
+        if (m->content[curr_p]->is_running == false && m->content[curr_p]->parent_is_running == false)
+            m->content[curr_p]->valid_row = true;
     }
 }
 

@@ -183,3 +183,14 @@ inumber (int fd)
   return syscall1 (SYS_INUMBER, fd);
 }
 
+void
+sleep (int millis) 
+{
+  return syscall1 (SYS_SLEEP, millis);
+}
+
+void
+plist (int fd) 
+{
+  return syscall0 (SYS_PLIST);
+}

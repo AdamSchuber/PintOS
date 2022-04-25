@@ -13,6 +13,7 @@ struct process_info
 {
     tid_t   tid;
     pid_t   parent_pid;
+    char*   name;
     int     exit_status;
     bool    parent_is_running;
     bool    is_running;
@@ -27,13 +28,15 @@ struct plist
     process_ptr content[PLIST_SIZE];
 };
 
-// TODO: parent thread id to parent process id 
+bool plist_parent_running(struct plist *m, pid_t parent_pid);
+
+pid_t plist_get_pid(struct plist *m, tid_t tid);
 
 void plist_init(struct plist *m);
 
-void plist_insert(struct plist *m, process_ptr v);
+pid_t plist_insert(struct plist *m, process_ptr v);
 
-process_ptr process_info_init(tid_t tid, pid_t parent_pid);
+process_ptr plist_process_info_init(tid_t tid, pid_t parent_pid, char* name);
 
 process_ptr plist_find(struct plist *m, key_t k);
 
@@ -42,9 +45,9 @@ process_ptr plist_remove(struct plist *m, key_t k);
 void plist_for_each(struct plist *m,
                   void (*exec)(process_ptr v));
 
-void plist_remove_if(struct plist *m,
-                   bool (*cond)(key_t k, process_ptr v, int aux),
-                   int aux);
+void plist_remove_process(struct plist *m, tid_t curr);
+
+void plist_print(struct plist *m, pid_t pid);
 
 #endif /* PLIST_H */
 
@@ -54,10 +57,6 @@ void plist_remove_if(struct plist *m,
 //    plist.c : Your implementation.
 
 //    The following is strongly recommended:
-
-//    - A function that given process inforamtion (up to you to create)
-//      inserts this in a list of running processes and return an integer
-//      that can be used to find the information later on.
 
 //    - A function that given an integer (obtained from above function)
 //      FIND the process information in the list. Should return some
@@ -69,7 +68,7 @@ void plist_remove_if(struct plist *m,
 //      from the list. Should only remove the information when no process
 //      or thread need it anymore, but must guarantee it is always
 //      removed EVENTUALLY.
-     
+
 //    - A function that print the entire content of the list in a nice,
 //      clean, readable format.
      
