@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "plist.h"
-#include <stdlib.h>
+#include "threads/malloc.h"
 
 void plist_init(struct plist *m)
 {

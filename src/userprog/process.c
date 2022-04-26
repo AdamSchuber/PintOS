@@ -194,7 +194,6 @@ start_process (struct parameters_to_start_process* parameters)
     if_.esp = setup_main_stack_asm(parameters->command_line, if_.esp);
     
      
-     
     process_ptr new = plist_process_info_init(thread_current()->tid, plist_get_pid(&global_plist, parameters->parent_tid), thread_current()->name);
     plist_insert(&global_plist, new);
     

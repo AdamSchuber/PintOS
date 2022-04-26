@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "random": "c",
-        "functional": "c"
+        "functional": "c",
+        "malloc.h": "c"
     }
 }
