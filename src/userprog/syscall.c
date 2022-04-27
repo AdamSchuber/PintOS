@@ -33,6 +33,11 @@ int handle_exec(const char* command_line)
   return process_execute(command_line);
 }
 
+int handle_wait(int pid)
+{
+  return process_wait(pid);
+}
+
 void handle_halt(void)
 {
   power_off();
@@ -216,6 +221,8 @@ syscall_handler(struct intr_frame *f)
   case SYS_EXEC:
     f->eax = handle_exec((const char*)(esp[1]));
     break;
+  case SYS_WAIT:
+    f->eax = handle_wait((int)(esp[1]));
   case SYS_SLEEP:
     handle_sleep((int)(esp[1]));
     break;

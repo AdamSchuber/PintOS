@@ -33,6 +33,7 @@
 void process_init(void)
 {
    plist_init(&global_plist);
+;
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -40,12 +41,13 @@ void process_init(void)
  * instead. Note however that all cleanup after a process must be done
  * in process_cleanup, and that process_cleanup are already called
  * from thread_exit - do not call cleanup twice! */
-void process_exit(int status UNUSED)
-{
-   printf("%s%d\n", "THREAD_STATUS: ", status);
 
+// UNUSED på status innan (ta tillbaka?)
+void process_exit(int status)
+{
+   printf("%s%d PID: %d\n", "THREAD_STATUS: ", status, plist_get_pid(&global_plist, (int)thread_current()->tid));
    // Set exit_status to status.
-   global_plist.content[plist_get_pid(&global_plist, (int)&thread_current()->tid)]->exit_status = status;
+   global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->exit_status = status;
    thread_exit();
 }
 
@@ -53,9 +55,9 @@ void process_exit(int status UNUSED)
  * relevant debug information in a clean, readable format. */
 void process_print_list()
 {
-   printf("+-----------------------------------------------+");
-   printf("| pid | parent pid  | exit status | name        |");
-   printf("+-----------------------------------------------+");
+   printf("+-----------------------------------------------+\n");
+   printf("| pid | parent pid  | exit status | name        |\n");
+   printf("+-----------------------------------------------+\n");
 
    for (int i = 0; i < PLIST_SIZE; i++)
    {
@@ -88,9 +90,9 @@ process_execute (const char *command_line)
   int command_line_size = strlen(command_line) + 1;
   tid_t thread_id = -1;
   int  process_id = -1;
-
   /* LOCAL variable will cease existence when function return! */
   struct parameters_to_start_process arguments;
+  arguments.parent_tid = thread_current()->tid;
 
 
   debug("%s#%d: process_execute(\"%s\") ENTERED\n",
@@ -117,7 +119,8 @@ process_execute (const char *command_line)
    else
    {
       sema_down(&arguments.sema); 
-      process_id = thread_id;
+      process_id = plist_get_pid(&global_plist, thread_id);
+      printf("PID: %d\n", process_id);
    }      
 
   if (!arguments.success)      
@@ -193,11 +196,13 @@ start_process (struct parameters_to_start_process* parameters)
        can replace with C-code if you wish. */
     if_.esp = setup_main_stack_asm(parameters->command_line, if_.esp);
     
-     
-    process_ptr new = plist_process_info_init(thread_current()->tid, plist_get_pid(&global_plist, parameters->parent_tid), thread_current()->name);
-    plist_insert(&global_plist, new);
-    
-    parameters->success = true;
+    int parent_pid = plist_get_pid(&global_plist, parameters->parent_tid);
+    printf("----Inserting into plist----\n");
+    plist_insert(&global_plist, thread_current()->tid, (pid_t)parent_pid, thread_current()->name);
+    printf("----Successful insert----\n");
+
+
+   parameters->success = true;
     
     /* The stack and stack pointer should be setup correct just before
        the process start, so this is the place to dump stack content
@@ -255,7 +260,20 @@ process_wait (int child_id)
 
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
-  /* Yes! You need to do something good here ! */
+  
+  if(global_plist.content[child_id] == NULL)
+  {
+     return -1;
+  }
+
+  /* Yes! You need to do something good here ! */  
+   if (global_plist.content[child_id]->parent_pid == plist_get_pid(&global_plist, thread_current()->tid))
+   {
+      printf("--------------TEST-----------------\n");
+      sema_down(&global_plist.content[child_id]->sema);
+      status = global_plist.content[child_id]->exit_status;
+   }
+
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);
   
@@ -285,12 +303,15 @@ process_cleanup (void)
   struct thread  *cur = thread_current ();
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
-
+   status = global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->exit_status;
   // Cleanup of open file table
   map_for_each(&thread_current()->open_file_table, open_file_table_close);
    
    // Set current proccess as inactive in plist
-  global_plist.content[plist_get_pid(&global_plist, (int)&thread_current()->tid)]->is_running = false;  
+  global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->is_running = false;
+  
+   // Sema up so that parent can stop waiting for child to die
+  sema_up(&global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->sema);
   
    // Loop and set all redundant entries as valid for removal
   for (int i = 0; i < PLIST_SIZE; ++i) 

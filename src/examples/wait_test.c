@@ -24,6 +24,8 @@ int main(void)
   printf("Starting the fast child...\n");
   int pid = exec("fast 10");
 
+  plist();
+
   // Wait a little while to make sure that the child terminated.
   sleep(1000);
 
@@ -36,7 +38,6 @@ int main(void)
 
   printf("Seems OK, starting the slow child...\n");
   pid = exec("slow 20");
-
   // Don't sleep here, we want to call wait before the child is done.
 
   result = wait(pid);

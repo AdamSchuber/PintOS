@@ -6,6 +6,7 @@
 
 void handle_plist(void);
 int handle_exec(const char* command_line);
+int handle_wait(int pid);
 void handle_sleep(int millis);
 
 void syscall_init (void);
