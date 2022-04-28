@@ -55,6 +55,7 @@ void process_exit(int status)
  * relevant debug information in a clean, readable format. */
 void process_print_list()
 {
+   // 1 printf
    printf("+-----------------------------------------------+\n");
    printf("| pid | parent pid  | exit status | name        |\n");
    printf("+-----------------------------------------------+\n");
@@ -197,9 +198,9 @@ start_process (struct parameters_to_start_process* parameters)
     if_.esp = setup_main_stack_asm(parameters->command_line, if_.esp);
     
     int parent_pid = plist_get_pid(&global_plist, parameters->parent_tid);
-    printf("----Inserting into plist----\n");
+    //printf("----Inserting into plist----\n");
     plist_insert(&global_plist, thread_current()->tid, (pid_t)parent_pid, thread_current()->name);
-    printf("----Successful insert----\n");
+    //printf("----Successful insert----\n");
 
 
    parameters->success = true;
@@ -260,7 +261,7 @@ process_wait (int child_id)
 
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
-  
+  // Kolla efter rimligt child_id
   if(global_plist.content[child_id] == NULL)
   {
      return -1;
@@ -269,9 +270,9 @@ process_wait (int child_id)
   /* Yes! You need to do something good here ! */  
    if (global_plist.content[child_id]->parent_pid == plist_get_pid(&global_plist, thread_current()->tid))
    {
-      printf("--------------TEST-----------------\n");
       sema_down(&global_plist.content[child_id]->sema);
       status = global_plist.content[child_id]->exit_status;
+      global_plist.content[child_id]->valid_row = true;
    }
 
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
@@ -310,16 +311,6 @@ process_cleanup (void)
    // Set current proccess as inactive in plist
   global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->is_running = false;
   
-   // Sema up so that parent can stop waiting for child to die
-  sema_up(&global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->sema);
-  
-   // Loop and set all redundant entries as valid for removal
-  for (int i = 0; i < PLIST_SIZE; ++i) 
-  {
-     plist_remove_process(&global_plist, (int)&thread_current()->tid);
-  }
-
-  
   debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
   
   /* Later tests DEPEND on this output to work correct. You will have
@@ -330,6 +321,15 @@ process_cleanup (void)
    * possibly before the printf is completed.)
    */
   printf("%s: exit(%d)\n", thread_name(), status);
+  
+   // Sema up so that parent can stop waiting for child to die
+  sema_up(&global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->sema);
+  
+   // Loop and set all redundant entries as valid for removal
+  for (int i = 0; i < PLIST_SIZE; ++i) 
+  {
+     plist_remove_process(&global_plist, (int)&thread_current()->tid);
+  }
   
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

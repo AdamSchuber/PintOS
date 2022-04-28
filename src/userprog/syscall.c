@@ -223,6 +223,7 @@ syscall_handler(struct intr_frame *f)
     break;
   case SYS_WAIT:
     f->eax = handle_wait((int)(esp[1]));
+    break;
   case SYS_SLEEP:
     handle_sleep((int)(esp[1]));
     break;

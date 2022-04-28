@@ -54,9 +54,10 @@ pid_t plist_insert(struct plist *m, tid_t tid, pid_t parent_pid, char* name)
 {
     for (int i = 0; i < PLIST_SIZE; ++i)
     {
+        // Kodduplicering :S
+        // Valid row överflödig
         if (m->content[i] == NULL)
         {
-            printf("Name: %s ID: %d| PLIST_INSERT ENTERED\n", name, i);
             process_ptr new_ptr = malloc(sizeof(struct process_info));
             new_ptr->tid = tid;
             new_ptr->parent_pid = parent_pid;
@@ -64,8 +65,8 @@ pid_t plist_insert(struct plist *m, tid_t tid, pid_t parent_pid, char* name)
             new_ptr->parent_is_running = true;
             new_ptr->valid_row = false;
             sema_init(&new_ptr->sema, 0);
-            new_ptr->name = malloc(sizeof(*name));
-            strlcpy(new_ptr->name, name, strlen(name));  
+            new_ptr->name = malloc(sizeof(*name) +  sizeof(char));
+            strlcpy(new_ptr->name, name, strlen(name) + 1);  
             m->content[i] = new_ptr;
             return i;
         }
@@ -79,8 +80,8 @@ pid_t plist_insert(struct plist *m, tid_t tid, pid_t parent_pid, char* name)
             new_ptr->parent_is_running = true;
             new_ptr->valid_row = false;
             sema_init(&new_ptr->sema, 0);
-            new_ptr->name = malloc(sizeof(*name));
-            strlcpy(new_ptr->name, name, strlen(name));  
+            new_ptr->name = malloc(sizeof(*name) +  sizeof(char));
+            strlcpy(new_ptr->name, name, strlen(name) + 1); 
             return i;
         }
     }

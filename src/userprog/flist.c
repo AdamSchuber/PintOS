@@ -38,7 +38,6 @@ value_t map_find(struct map *m, key_t k)
 {
     if (k > MAP_SIZE - 1 || k < 0)
     {
-        value_t null_ptr = NULL;
         return NULL;
     }
     return m->content[k];
