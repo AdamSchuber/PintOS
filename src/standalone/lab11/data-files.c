@@ -35,53 +35,67 @@ void data_init(void) NO_STEP {
 // redan råkar vara öppnad ger funktionen tillbaka en pekare till instansen som
 // redan var öppen. Annars laddas filen in i RAM.
 struct data_file *data_open(int file) {
-  //lock_acquire(&global_lock);
   
-  if (open_files[file] != NULL)
+  lock_acquire(&global_lock);
+  struct data_file *result = open_files[file];
+  if (result != NULL)
   {
     lock_acquire(&open_files[file]->file_lock);
+    lock_release(&global_lock);
   }
-  
-  struct data_file *result = open_files[file];
+
   if (result == NULL) {
     // Skapa en ny data_file.
     result = malloc(sizeof(struct data_file));
+    open_files[file] = result;
+    lock_init(&result->file_lock);
+    lock_acquire(&result->file_lock);
+    lock_release(&global_lock);
+    
+    
     result->open_count = 0;
     result->id = file;
 
-    lock_init(&result->file_lock);
-
-    // Simulera att vi läser in data...
+  // Simulera att vi läser in data...
     timer_msleep(100);
     if (file == 0)
       result->data = strdup("File 0");
     else
       result->data = strdup("File 1");
 
+    result->open_count++;
+    lock_release(&result->file_lock);
+  
     // Spara data i "open_files".
-    open_files[file] = result;
+  }
+  else {
+    result->open_count++;
+    lock_release(&open_files[file]->file_lock);
   }
 
-  result->open_count++;
-  lock_release(&open_files[file]->file_lock);
-  //lock_release(&global_lock);
+
   return result;
 }
 
 // Stäng en datafil. Om ingen annan har filen öppen ska filen avallokeras för
 // att spara minne.
 void data_close(struct data_file *file) {
-  lock_acquire(&file->file_lock);
-  int open_count = --file->open_count;
+    lock_acquire(&global_lock);
+    //lock_acquire(&file->file_lock);
+    int open_count = --file->open_count;
   
   if (open_count <= 0) {
     // Ingen har filen öppen längre. Då kan vi ta bort den!
-
     open_files[file->id] = NULL;
     free(file->data);
+    //lock_release(&file->file_lock);
     free(file);
   }
-  lock_release(&file->file_lock);
+  lock_release(&global_lock);
+//   else {
+//     lock_release(&global_lock);
+//     lock_release(&file->file_lock);
+//   }
 }
 
 
