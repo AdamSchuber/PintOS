@@ -81,21 +81,21 @@ struct data_file *data_open(int file) {
 // att spara minne.
 void data_close(struct data_file *file) {
     lock_acquire(&global_lock);
-    //lock_acquire(&file->file_lock);
+    lock_acquire(&file->file_lock);
     int open_count = --file->open_count;
   
   if (open_count <= 0) {
     // Ingen har filen öppen längre. Då kan vi ta bort den!
     open_files[file->id] = NULL;
     free(file->data);
-    //lock_release(&file->file_lock);
+    lock_release(&file->file_lock);
     free(file);
+    lock_release(&global_lock);
   }
-  lock_release(&global_lock);
-//   else {
-//     lock_release(&global_lock);
-//     lock_release(&file->file_lock);
-//   }
+  else {
+    lock_release(&global_lock);
+    lock_release(&file->file_lock);
+  }
 }
 
 
@@ -117,7 +117,7 @@ void thread_main(int *file_id) {
 }
 
 int main(void) {
-    sema_init(&sema, 0);
+  sema_init(&sema, 0);
   data_init();
 
   int zero = 0;
