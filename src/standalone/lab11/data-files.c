@@ -107,14 +107,17 @@ void data_close(struct data_file *file) {
  * att kunna testa bättre.
  */
 
+struct semaphore sema;
 
 void thread_main(int *file_id) {
   struct data_file *f = data_open(*file_id);
   printf("Data: %s\n", f->data);
   data_close(f);
+  sema_up(&sema);
 }
 
 int main(void) {
+    sema_init(&sema, 0);
   data_init();
 
   int zero = 0;
@@ -123,6 +126,11 @@ int main(void) {
   thread_new(&thread_main, &one);
 
   thread_main(&zero);
+
+    for (int i = 0; i < 3; ++i)
+    {
+        sema_down(&sema);
+    }
 
   return 0;
 }
