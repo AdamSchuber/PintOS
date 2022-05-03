@@ -12,6 +12,9 @@
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
 
+  // Global lock for inode
+struct lock global_inode_lock;
+
 /* On-disk inode.
    Must be exactly DISK_SECTOR_SIZE bytes long. */
 struct inode_disk
@@ -38,6 +41,9 @@ struct inode
     int open_cnt;                       /* Number of openers. */
     bool removed;                       /* True if deleted, false otherwise. */
     struct inode_disk data;             /* Inode content. */
+
+      // Local lock for inode
+    struct lock local_inode_lock;
   };
 
 
@@ -64,6 +70,7 @@ void
 inode_init (void) 
 {
   list_init (&open_inodes);
+  lock_init(&global_inode_lock);
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -74,6 +81,10 @@ inode_init (void)
 bool
 inode_create (disk_sector_t sector, off_t length)
 {
+
+  // Behövs inga lås eftersom det redan blir låst och synkroniserat 
+  // i funktionerna free_map_allocate och disk_write
+
   struct inode_disk *disk_inode = NULL;
   bool success = false;
 
@@ -113,9 +124,15 @@ inode_create (disk_sector_t sector, off_t length)
 struct inode *
 inode_open (disk_sector_t sector) 
 {
+
+  // <--- LÅS HÄR
+  // Gjorde som i standalone labben typ
+
   struct list_elem *e;
   struct inode *inode;
 
+  // Sätter global lock så ingen annan inode försöker accessa samma
+  lock_acquire(&global_inode_lock);
   
   /* Check whether this inode is already open. */
   for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
@@ -125,6 +142,7 @@ inode_open (disk_sector_t sector)
       if (inode->sector == sector) 
         {
           inode_reopen (inode);
+          lock_release(&global_inode_lock);
           return inode; 
         }
     }
@@ -138,13 +156,20 @@ inode_open (disk_sector_t sector)
   
   list_push_front (&open_inodes, &inode->elem);
   
+  // Släpper global lock för malloc osv är färdigt men sätter local lock för att låsa
+  // data access i den specifika inoden
+  lock_init(&inode->local_inode_lock);
+  lock_acquire(&inode->local_inode_lock);
+  lock_release(&global_inode_lock);
+  
   /* Initialize. */
   inode->sector = sector;
   inode->open_cnt = 1;
   inode->removed = false;
   
   disk_read (filesys_disk, inode->sector, &inode->data);
-  
+
+  lock_release(&inode->local_inode_lock);
   return inode;
 }
 
@@ -152,10 +177,14 @@ inode_open (disk_sector_t sector)
 struct inode *
 inode_reopen (struct inode *inode)
 {
+  // <--- LÅS HÄR
+  // Använder lokala lås
+  lock_acquire(&inode->local_inode_lock);
   if (inode != NULL)
   {
     inode->open_cnt++;
   }
+  lock_release(&inode->local_inode_lock);
   return inode;
 }
 
@@ -176,7 +205,11 @@ inode_close (struct inode *inode)
   if (inode == NULL)
     return;
 
-    
+  // <--- LÅS HÄR
+  // Låser med båda lås som i standalone labben
+  lock_acquire(&global_inode_lock);
+  lock_acquire(&inode->local_inode_lock);
+
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0)
     {
@@ -191,10 +224,13 @@ inode_close (struct inode *inode)
           free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length)); 
         }
-
+      lock_release(&inode->local_inode_lock);
       free (inode);
+      lock_release(&global_inode_lock);
       return;
     }
+    lock_release(&inode->local_inode_lock);
+    lock_release(&global_inode_lock);
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -202,8 +238,12 @@ inode_close (struct inode *inode)
 void
 inode_remove (struct inode *inode) 
 {
+  // <--- LÅS HÄR
+  // Använder lokala lås eftersom det bara är data access
+  lock_acquire(&inode->local_inode_lock);
   ASSERT (inode != NULL);
   inode->removed = true;
+  lock_release(&inode->local_inode_lock);
 }
 
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
