@@ -23,19 +23,25 @@ struct data_file {
 // Håll koll på den fil vi har öppnat. Om ingen fil är öppen är denna variabel NULL.
 // Tänk er att detta är en array av två pekare, dvs. struct data_file *open_files[2];
 struct data_file **open_files;
-struct lock lock;
+struct lock global_lock;
 
 // Initiera de datastrukturer vi behöver. Anropas en gång i början.
 void data_init(void) NO_STEP {
   open_files = malloc(sizeof(struct data_file *)*2);
-  lock_init(&lock);
+  lock_init(&global_lock);
 }
 
 // Öppna datafilen med nummer "file" och se till att den finns i RAM. Om den
 // redan råkar vara öppnad ger funktionen tillbaka en pekare till instansen som
 // redan var öppen. Annars laddas filen in i RAM.
 struct data_file *data_open(int file) {
-  lock_acquire(&lock);
+  //lock_acquire(&global_lock);
+  
+  if (open_files[file] != NULL)
+  {
+    lock_acquire(&open_files[file]->file_lock);
+  }
+  
   struct data_file *result = open_files[file];
   if (result == NULL) {
     // Skapa en ny data_file.
@@ -55,12 +61,10 @@ struct data_file *data_open(int file) {
     // Spara data i "open_files".
     open_files[file] = result;
   }
-  lock_release(&lock);
 
-  lock_acquire(&result->file_lock);
   result->open_count++;
-  lock_release(&result->file_lock);
-
+  lock_release(&open_files[file]->file_lock);
+  //lock_release(&global_lock);
   return result;
 }
 
@@ -69,16 +73,15 @@ struct data_file *data_open(int file) {
 void data_close(struct data_file *file) {
   lock_acquire(&file->file_lock);
   int open_count = --file->open_count;
-  lock_release(&file->file_lock);
   
   if (open_count <= 0) {
     // Ingen har filen öppen längre. Då kan vi ta bort den!
-    lock_acquire(&lock);
+
     open_files[file->id] = NULL;
     free(file->data);
     free(file);
-    lock_release(&lock);
   }
+  lock_release(&file->file_lock);
 }
 
 
