@@ -20,11 +20,33 @@
  */
 #error Read comment above and then remove this line.
 
+// void *pg_round_down(const void* adr);
+// Returnerar första adressen i samma sida som adr.
+
+// unsigned pg_no(const void* adr);
+// Returnerar numret på sidan som innehåller adr. Sidnummer börjar räkna på 0, som allt annat i C.
+
+// void *pagedir_get_page (void *pd, const void *adr);
+// Använder översättningstabellen pd för att slå upp fysisk adress motsvarande adr. Om översättningen misslyckas returneras NULL. Översättningstabellen finns i struct thread, och heter pagedir.
+// Notera att denna funktion är relativt dyr. Du vill alltså se till att inte anropa den fler gånger än vad du
+// faktiskt behöver! I testprogrammet tar varje anrop till pagedir_get_page några hundra millisekunder, så
+// om testerna tar lång tid att köra anropar du antagligen funktionen för många gånger!
+
+// bool is_end_of_string(char* adr);
+// Returnerar true om adressen adr innehåller ett noll-tecken, '\0'. Eftersom koden endast simulerar systemet
+// går inga adresser att läsa eller skriva. Därför måste du använda denna funktion för att avgöra om en sträng
+// är slut. Funktionen ersätter alltså testet *adr == '\0'.
+
 /* Verify all addresses from and including 'start' up to but excluding
  * (start+length). */
 bool verify_fix_length(void* start, unsigned length)
 {
-  // ADD YOUR CODE HERE
+  
+
+  if (length > PGSIZE)
+    return false;
+
+  
 }
 
 /* Verify all addresses from and including 'start' up to and including

@@ -264,16 +264,15 @@ inode_remove (struct inode *inode)
 off_t
 inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset) 
 {
-  timer_msleep(1);
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
 
-  lock_acquire(&inode->inode_local_lock);
+  lock_acquire(&inode->inode_read_lock);
   inode->read_cnt++;
   if (inode->read_cnt == 1)
     sema_down(&inode->write_sema);
-  lock_release(&inode->inode_local_lock);
+  lock_release(&inode->inode_read_lock);
   
   while (size > 0) 
     {
@@ -335,7 +334,6 @@ off_t
 inode_write_at (struct inode *inode, const void *buffer_, off_t size,
                 off_t offset) 
 {
-  timer_msleep(1);
   const uint8_t *buffer = buffer_;
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
