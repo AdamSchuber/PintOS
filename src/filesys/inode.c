@@ -13,7 +13,7 @@
 #define INODE_MAGIC 0x494e4f44
 
   // Global lock for inode
-struct lock global_inode_lock;
+struct lock inode_global_lock;
 
 /* On-disk inode.
    Must be exactly DISK_SECTOR_SIZE bytes long. */
@@ -43,7 +43,15 @@ struct inode
     struct inode_disk data;             /* Inode content. */
 
       // Local lock for inode
-    struct lock local_inode_lock;
+    struct lock inode_local_lock;
+
+      // read lock for inode
+    struct lock inode_read_lock;
+
+      // write semaphore for inode
+    struct semaphore write_sema;
+
+    int read_cnt;
   };
 
 
@@ -70,7 +78,8 @@ void
 inode_init (void) 
 {
   list_init (&open_inodes);
-  lock_init(&global_inode_lock);
+  lock_init(&inode_global_lock);
+
 }
 
 /* Initializes an inode with LENGTH bytes of data and
@@ -132,7 +141,7 @@ inode_open (disk_sector_t sector)
   struct inode *inode;
 
   // Sätter global lock så ingen annan inode försöker accessa samma
-  lock_acquire(&global_inode_lock);
+  lock_acquire(&inode_global_lock);
   
   /* Check whether this inode is already open. */
   for (e = list_begin (&open_inodes); e != list_end (&open_inodes);
@@ -142,7 +151,7 @@ inode_open (disk_sector_t sector)
       if (inode->sector == sector) 
         {
           inode_reopen (inode);
-          lock_release(&global_inode_lock);
+          lock_release(&inode_global_lock);
           return inode; 
         }
     }
@@ -158,18 +167,21 @@ inode_open (disk_sector_t sector)
   
   // Släpper global lock för malloc osv är färdigt men sätter local lock för att låsa
   // data access i den specifika inoden
-  lock_init(&inode->local_inode_lock);
-  lock_acquire(&inode->local_inode_lock);
-  lock_release(&global_inode_lock);
+  lock_init(&inode->inode_local_lock);
+  lock_acquire(&inode->inode_local_lock);
+  lock_release(&inode_global_lock);
   
   /* Initialize. */
   inode->sector = sector;
   inode->open_cnt = 1;
   inode->removed = false;
+  inode->read_cnt = 0;
+  sema_init(&inode->write_sema, 1);
+  lock_init(&inode->inode_read_lock);
   
   disk_read (filesys_disk, inode->sector, &inode->data);
 
-  lock_release(&inode->local_inode_lock);
+  lock_release(&inode->inode_local_lock);
   return inode;
 }
 
@@ -179,12 +191,12 @@ inode_reopen (struct inode *inode)
 {
   // <--- LÅS HÄR
   // Använder lokala lås
-  lock_acquire(&inode->local_inode_lock);
+  lock_acquire(&inode->inode_local_lock);
   if (inode != NULL)
   {
     inode->open_cnt++;
   }
-  lock_release(&inode->local_inode_lock);
+  lock_release(&inode->inode_local_lock);
   return inode;
 }
 
@@ -207,8 +219,8 @@ inode_close (struct inode *inode)
 
   // <--- LÅS HÄR
   // Låser med båda lås som i standalone labben
-  lock_acquire(&global_inode_lock);
-  lock_acquire(&inode->local_inode_lock);
+  lock_acquire(&inode_global_lock);
+  lock_acquire(&inode->inode_local_lock);
 
   /* Release resources if this was the last opener. */
   if (--inode->open_cnt == 0)
@@ -224,13 +236,13 @@ inode_close (struct inode *inode)
           free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length)); 
         }
-      lock_release(&inode->local_inode_lock);
+      lock_release(&inode->inode_local_lock);
       free (inode);
-      lock_release(&global_inode_lock);
+      lock_release(&inode_global_lock);
       return;
     }
-    lock_release(&inode->local_inode_lock);
-    lock_release(&global_inode_lock);
+    lock_release(&inode->inode_local_lock);
+    lock_release(&inode_global_lock);
 }
 
 /* Marks INODE to be deleted when it is closed by the last caller who
@@ -240,10 +252,10 @@ inode_remove (struct inode *inode)
 {
   // <--- LÅS HÄR
   // Använder lokala lås eftersom det bara är data access
-  lock_acquire(&inode->local_inode_lock);
+  lock_acquire(&inode->inode_local_lock);
   ASSERT (inode != NULL);
   inode->removed = true;
-  lock_release(&inode->local_inode_lock);
+  lock_release(&inode->inode_local_lock);
 }
 
 /* Reads SIZE bytes from INODE into BUFFER, starting at position OFFSET.
@@ -255,6 +267,12 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
+
+  lock_acquire(&inode->inode_local_lock);
+  inode->read_cnt++;
+  if (inode->read_cnt == 1)
+    sema_down(&inode->write_sema);
+  lock_release(&inode->inode_local_lock);
   
   while (size > 0) 
     {
@@ -298,6 +316,12 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
     }
   free (bounce);
 
+  lock_acquire(&inode->inode_read_lock);
+  inode->read_cnt--;
+  if (inode->read_cnt == 0)
+    sema_up(&inode->write_sema);
+  lock_release(&inode->inode_read_lock);
+
   return bytes_read;
 }
 
@@ -314,6 +338,7 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
+  sema_down(&inode->write_sema);
     
   while (size > 0) 
     {
@@ -363,6 +388,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   free (bounce);
+
+  sema_up(&inode->write_sema);
 
   return bytes_written;
 }
