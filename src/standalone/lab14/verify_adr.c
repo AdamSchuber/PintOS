@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include "pagedir.h"
 #include "thread.h"
-
+#include <stdio.h>
 /* verfy_*_lenght are intended to be used in a system call that accept
  * parameters containing suspisious (user mode) adresses. The
  * operating system (executng the system call in kernel mode) must not
@@ -18,7 +18,6 @@
  *
  *  gcc -Wall -Wextra -std=gnu99 -pedantic -m32 -g pagedir.o verify_adr.c
  */
-#error Read comment above and then remove this line.
 
 // void *pg_round_down(const void* adr);
 // Returnerar första adressen i samma sida som adr.
@@ -41,11 +40,14 @@
  * (start+length). */
 bool verify_fix_length(void* start, unsigned length)
 {
-  
+  //void* pd = pg_round_down(start);
+  //int page_num = pg_no(start);
+  void *phys_addr = pagedir_get_page(thread_current()->pagedir, start);
 
-  if (length > PGSIZE)
+  if (phys_addr == NULL)
     return false;
 
+  
   
 }
 

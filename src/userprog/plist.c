@@ -9,6 +9,7 @@
 
 void plist_init(struct plist *m)
 {
+    //lock_init(&global_lock);
     for (int i = 0; i < PLIST_SIZE; ++i)
     {
         m->content[i] = NULL;
@@ -52,10 +53,9 @@ void plist_print(struct plist *m, pid_t pid)
 // file is already in global plist
 pid_t plist_insert(struct plist *m, tid_t tid, pid_t parent_pid, char* name)
 {
+    //lock_acquire(&global_lock);
     for (int i = 0; i < PLIST_SIZE; ++i)
     {
-        // Kodduplicering :S
-        // Valid row överflödig
         if (m->content[i] == NULL)
         {
             process_ptr new_ptr = malloc(sizeof(struct process_info));
@@ -68,6 +68,7 @@ pid_t plist_insert(struct plist *m, tid_t tid, pid_t parent_pid, char* name)
             new_ptr->name = malloc(sizeof(*name) +  sizeof(char));
             strlcpy(new_ptr->name, name, strlen(name) + 1);  
             m->content[i] = new_ptr;
+            //lock_release(&global_lock);
             return i;
         }
         else if (m->content[i]->valid_row == true)
@@ -82,9 +83,11 @@ pid_t plist_insert(struct plist *m, tid_t tid, pid_t parent_pid, char* name)
             sema_init(&new_ptr->sema, 0);
             new_ptr->name = malloc(sizeof(*name) +  sizeof(char));
             strlcpy(new_ptr->name, name, strlen(name) + 1); 
+            //lock_release(&global_lock);
             return i;
         }
     }
+    //lock_release(&global_lock);
     return -1;
 }
 
@@ -94,11 +97,14 @@ void plist_remove_process(struct plist *m, tid_t curr_t)
     pid_t curr_p = plist_get_pid(m, curr_t);
     if (curr_p != -1)
     {
+        //lock_acquire(&global_lock);
         bool parent_status = plist_parent_running(m, m->content[curr_p]->parent_pid);
         m->content[curr_p]->parent_is_running = parent_status;
 
         // sätt valid_row till true om is_running och parent_is_running är false
         if (m->content[curr_p]->is_running == false && m->content[curr_p]->parent_is_running == false)
             m->content[curr_p]->valid_row = true;
+        
+        //lock_release(&global_lock);
     }
 }

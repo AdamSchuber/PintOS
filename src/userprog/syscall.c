@@ -179,7 +179,7 @@ int handle_filesize(int fd)
   if (file_ptr != NULL)
     return file_length(file_ptr);
   return -1;
-}
+} 
 
 /*########################################################################*/
 

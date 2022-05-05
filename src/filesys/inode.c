@@ -169,7 +169,6 @@ inode_open (disk_sector_t sector)
   // data access i den specifika inoden
   lock_init(&inode->inode_local_lock);
   lock_acquire(&inode->inode_local_lock);
-  lock_release(&inode_global_lock);
   
   /* Initialize. */
   inode->sector = sector;
@@ -178,6 +177,7 @@ inode_open (disk_sector_t sector)
   inode->read_cnt = 0;
   sema_init(&inode->write_sema, 1);
   lock_init(&inode->inode_read_lock);
+  lock_release(&inode_global_lock);
   
   disk_read (filesys_disk, inode->sector, &inode->data);
 
@@ -228,6 +228,8 @@ inode_close (struct inode *inode)
       /* Remove from inode list. */
       list_remove (&inode->elem);
       
+      lock_release(&inode->inode_local_lock);
+      lock_release(&inode_global_lock);
  
       /* Deallocate blocks if the file is marked as removed. */
       if (inode->removed) 
@@ -236,9 +238,7 @@ inode_close (struct inode *inode)
           free_map_release (inode->data.start,
                             bytes_to_sectors (inode->data.length)); 
         }
-      lock_release(&inode->inode_local_lock);
       free (inode);
-      lock_release(&inode_global_lock);
       return;
     }
     lock_release(&inode->inode_local_lock);

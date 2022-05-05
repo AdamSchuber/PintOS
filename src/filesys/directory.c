@@ -11,9 +11,10 @@
 struct dir 
   {
     struct inode *inode;                /* Backing store. */
-    off_t pos;                          /* Current position. */
-    struct lock dir_lock; 
+    off_t pos;                          /* Current position. */ 
   };
+
+struct lock dir_lock;
 
 /* A single directory entry. */
 struct dir_entry 
@@ -28,6 +29,7 @@ struct dir_entry
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) 
 {
+  lock_init(&dir_lock);
   return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
 }
 
@@ -39,7 +41,6 @@ dir_open (struct inode *inode)
   struct dir *dir = calloc (1, sizeof *dir);
   if (inode != NULL && dir != NULL)
     {
-      lock_init(&dir->dir_lock);
       dir->inode = inode;
       dir->pos = 0;
       return dir;
@@ -157,7 +158,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector)
   if (*name == '\0' || strlen (name) > NAME_MAX)
     return false;
 
-  lock_acquire(&dir->dir_lock);
+  lock_acquire(&dir_lock);
 
   /* Check that NAME is not in use. */
   if (lookup (dir, name, NULL, NULL))
@@ -182,7 +183,7 @@ dir_add (struct dir *dir, const char *name, disk_sector_t inode_sector)
   success = inode_write_at (dir->inode, &e, sizeof e, ofs) == sizeof e;
 
   done:
-  lock_release(&dir->dir_lock);
+  lock_release(&dir_lock);
   return success;
 }
 
@@ -194,7 +195,6 @@ dir_remove (struct dir *dir, const char *name)
 {
   // <--- LÅS HÄR
 
-  lock_acquire(&dir->dir_lock);
 
   struct dir_entry e;
   struct inode *inode = NULL;
@@ -205,6 +205,7 @@ dir_remove (struct dir *dir, const char *name)
   ASSERT (name != NULL);
 
   /* Find directory entry. */
+  lock_acquire(&dir_lock);
   if (!lookup (dir, name, &e, &ofs))
     goto done;
 
@@ -218,13 +219,15 @@ dir_remove (struct dir *dir, const char *name)
   if (inode_write_at (dir->inode, &e, sizeof e, ofs) != sizeof e) 
     goto done;
 
+  // end of critical section!!!
+
   /* Remove inode. */
   inode_remove (inode);
   success = true;
 
  done:
+  lock_release(&dir_lock);
   inode_close (inode);
-  lock_release(&dir->dir_lock);
   return success;
 }
 

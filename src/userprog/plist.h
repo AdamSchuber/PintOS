@@ -10,6 +10,8 @@
 typedef int pid_t;
 typedef int tid_t;
 
+struct lock global_lock;
+
 struct process_info
 {
     tid_t   tid;

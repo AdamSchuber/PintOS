@@ -45,7 +45,6 @@ void process_init(void)
 // UNUSED på status innan (ta tillbaka?)
 void process_exit(int status)
 {
-   printf("%s%d PID: %d\n", "THREAD_STATUS: ", status, plist_get_pid(&global_plist, (int)thread_current()->tid));
    // Set exit_status to status.
    global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->exit_status = status;
    thread_exit();
@@ -56,9 +55,7 @@ void process_exit(int status)
 void process_print_list()
 {
    // 1 printf
-   printf("+-----------------------------------------------+\n");
-   printf("| pid | parent pid  | exit status | name        |\n");
-   printf("+-----------------------------------------------+\n");
+   printf("+-----------------------------------------------+\n| pid | parent pid  | exit status | name        |\n+-----------------------------------------------+\n");
 
    for (int i = 0; i < PLIST_SIZE; i++)
    {
@@ -121,7 +118,6 @@ process_execute (const char *command_line)
    {
       sema_down(&arguments.sema); 
       process_id = plist_get_pid(&global_plist, thread_id);
-      printf("PID: %d\n", process_id);
    }      
 
   if (!arguments.success)      
