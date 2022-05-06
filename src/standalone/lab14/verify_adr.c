@@ -44,15 +44,6 @@ bool verify_fix_length(void *start, unsigned length)
         return false;
     }
   }
-  // void *tmp_addr = start + length;
-  // do
-  // {
-  //   if (pagedir_get_page(thread_current()->pagedir, tmp_addr) == NULL)
-  //     return false;
-
-  //   tmp_addr = tmp_addr - PGSIZE;
-
-  // } while (tmp_addr > start);
   return true;
 }
 
