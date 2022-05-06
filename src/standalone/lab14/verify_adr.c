@@ -19,75 +19,100 @@
  *  gcc -Wall -Wextra -std=gnu99 -pedantic -m32 -g pagedir.o verify_adr.c
  */
 
-// void *pg_round_down(const void* adr);
-// Returnerar första adressen i samma sida som adr.
-
-// unsigned pg_no(const void* adr);
-// Returnerar numret på sidan som innehåller adr. Sidnummer börjar räkna på 0, som allt annat i C.
-
-// void *pagedir_get_page (void *pd, const void *adr);
-// Använder översättningstabellen pd för att slå upp fysisk adress motsvarande adr. Om översättningen misslyckas returneras NULL. Översättningstabellen finns i struct thread, och heter pagedir.
-// Notera att denna funktion är relativt dyr. Du vill alltså se till att inte anropa den fler gånger än vad du
-// faktiskt behöver! I testprogrammet tar varje anrop till pagedir_get_page några hundra millisekunder, så
-// om testerna tar lång tid att köra anropar du antagligen funktionen för många gånger!
-
-// bool is_end_of_string(char* adr);
-// Returnerar true om adressen adr innehåller ett noll-tecken, '\0'. Eftersom koden endast simulerar systemet
-// går inga adresser att läsa eller skriva. Därför måste du använda denna funktion för att avgöra om en sträng
-// är slut. Funktionen ersätter alltså testet *adr == '\0'.
-
 /* Verify all addresses from and including 'start' up to but excluding
  * (start+length). */
-bool verify_fix_length(void* start, unsigned length)
+bool verify_fix_length(void *start, unsigned length)
 {
-  //void* pd = pg_round_down(start);
-  //int page_num = pg_no(start);
-  void *phys_addr = pagedir_get_page(thread_current()->pagedir, start);
-
-  if (phys_addr == NULL)
+    // Check first if start is even in the page directory
+  if (pagedir_get_page(thread_current()->pagedir, start) == NULL)
     return false;
 
+    // Get the page number for the start addresses page
+  unsigned int prev_pg = pg_no(start);
   
+    // Iterate through all addresses from start to length
+    // and if the page has changed since the previous iteration,
+    // check once again whether the page is in the directory
+  for (unsigned int i; i < length; ++i)
+  {
+    unsigned int curr_pg = pg_no(start+i);
+    if (curr_pg != prev_pg)
+    {
+      prev_pg = curr_pg;
+      void *check_addr = start+i;
+      if (pagedir_get_page(thread_current()->pagedir, check_addr) == NULL)
+        return false;
+    }
+  }
   
+  // void *tmp_addr = start + length;
+  // do
+  // {
+  //   if (pagedir_get_page(thread_current()->pagedir, tmp_addr) == NULL)
+  //     return false;
+
+  //   tmp_addr = tmp_addr - PGSIZE;  
+
+  // } while (tmp_addr > start);
+
+  return true;
 }
 
 /* Verify all addresses from and including 'start' up to and including
  * the address first containg a null-character ('\0'). (The way
  * C-strings are stored.)
  */
-bool verify_variable_length(char* start)
+bool verify_variable_length(char *start)
 {
-  // ADD YOUR CODE HERE
+    // Check first if start is even in the page directory
+  if (pagedir_get_page(thread_current()->pagedir, start) == NULL)
+    return false;
+
+  unsigned int prev_pg, curr_pg = pg_no(start);
+  void *check_addr = start;
+  do
+  {
+    curr_pg = pg_no(check_addr);
+    if (curr_pg != prev_pg)
+    {
+      prev_pg = curr_pg;
+      if (pagedir_get_page(thread_current()->pagedir, check_addr) == NULL)
+        return false;
+    }
+
+    if (is_end_of_string(check_addr))
+      return true;
+
+  } while (++check_addr);
 }
 
 /* Definition of test cases. */
 struct test_case_t
 {
-  void* start;
+  void *start;
   unsigned length;
 };
 
 #define TEST_CASE_COUNT 6
 
 const struct test_case_t test_case[TEST_CASE_COUNT] =
-{
-  {(void*)100, 100}, /* one full page */
-  {(void*)199, 102},
-  {(void*)101, 98},
-  {(void*)250, 190},
-  {(void*)250, 200},
-  {(void*)250, 210}
-};
+    {
+        {(void *)100, 100}, /* one full page */
+        {(void *)199, 102},
+        {(void *)101, 98},
+        {(void *)250, 190},
+        {(void *)250, 200},
+        {(void *)250, 210}};
 
 /* This main program will evalutate your solution. */
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
   int i;
   bool result;
 
-  if ( argc == 2 )
+  if (argc == 2)
   {
-    simulator_set_pagefault_time( atoi(argv[1]) );
+    simulator_set_pagefault_time(atoi(argv[1]));
   }
   thread_init();
 
