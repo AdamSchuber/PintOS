@@ -20,7 +20,7 @@
  * (start+length). */
 bool verify_fix_length(void *start, unsigned length)
 {
-  if (*(unsigned int*)start >= PHYS_BASE)
+  if ((unsigned int*)start >= PHYS_BASE || (unsigned int*)start + length >= PHYS_BASE)
     return false;
 
   // Check first if start is even in the page directory
@@ -53,7 +53,7 @@ bool verify_fix_length(void *start, unsigned length)
  */
 bool verify_variable_length(const char *start)
 {
-  if (*(unsigned int*)start >= PHYS_BASE)
+  if ((unsigned int*)start >= PHYS_BASE)
     return false;
 
   // Check first if start is even in the page directory
@@ -98,13 +98,16 @@ void handle_sleep(int millis)
 int handle_exec(const char* command_line)
 {
   if (!(verify_variable_length(command_line)))
-    handle_exit(-1);
+    process_exit(-1);
     
   return process_execute(command_line);
 }
 
 int handle_wait(int pid)
 {
+  if (pid < 0 || PLIST_SIZE < pid)
+    process_exit(-1);
+
   return process_wait(pid);
 }
 
@@ -121,8 +124,8 @@ void handle_exit(int status)
 // Return -1 if filedescriptor is incorrect, or chars read if correct
 int handle_read(int fd, char *buffer, unsigned size)
 {
-  if (!(verify_fix_length(buffer, size)))
-    handle_exit(-1);
+  if (!(verify_fix_length(buffer, size)) || size < 0)
+    process_exit(-1);
     
 
   // Checks if file descriptor is correct for read
@@ -131,6 +134,7 @@ int handle_read(int fd, char *buffer, unsigned size)
     int num_of_chars = 0;
     // Enters if-block if fd is is standard input, else it is read
     // as a regular file.
+    
     // Loops til size is reached, gets characters from input_getc
     // and puts them in buffer and putbuf() to display in program
     if (fd == STDIN_FILENO)
@@ -138,9 +142,6 @@ int handle_read(int fd, char *buffer, unsigned size)
       for (int i = 0; i < (int)(size); ++i)
       {
         char input = input_getc();
-        // Changes \r to \n so that ENTER button works as intended
-        if (input == '\r')
-          input = '\n';
         *(buffer + i) = input;
         putbuf((const char *)(&input), 1);
         ++num_of_chars;
@@ -195,7 +196,7 @@ int handle_write(int fd, char *buffer, unsigned size)
 int handle_open(const char *filename)
 {
   if (!(verify_variable_length(filename)))
-    return -1;
+    process_exit(-1);
 
   // Check if filename exists in filesystem, returns null if not
   struct file *file_ptr = filesys_open((char *)filename);
@@ -228,15 +229,17 @@ void handle_close(int fd)
 
 bool handle_create(const char *file, unsigned initial_size)
 {
-  if (!(verify_variable_length(file)))
-    return -1;
+  if (!(verify_variable_length(file)) || file == NULL)
+    process_exit(-1);
+
   return filesys_create(file, initial_size);
 }
 
 bool handle_remove(const char *file)
 {
   if (!(verify_variable_length(file)))
-    return -1;
+    process_exit(-1);
+
   return filesys_remove(file);
 }
 
@@ -295,18 +298,14 @@ syscall_handler(struct intr_frame *f)
 {
   int32_t *esp = (int32_t *)f->esp;
 
-  0 = SYS_WRITE
-  1 = fd
-  2 = buffer
-  3 = size
-  4 = null
-  5 = null
-  6 = null
-  7 = null
+  int required_args = argc[esp[0]];
 
-  required_args = argc[esp[0]] + 1;
+    // Checks all that all arguments passed thorugh to the sys_call is correct
+  if (!(verify_fix_length(esp + 1, sizeof(int) * required_args)))
+    return process_exit(-1);
 
-  if (esp[required_args] != null)
+  if (esp[0] >= SYS_NUMBER_OF_CALLS || esp[0] < 0)
+    return process_exit(-1);
 
   switch (esp[0])
   {

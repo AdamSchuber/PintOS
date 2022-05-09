@@ -3,6 +3,9 @@
         "syscall.h": "c",
         "init.h": "c",
         "directory.h": "c",
-        "io.h": "c"
+        "io.h": "c",
+        "string_view": "c",
+        "*.inc": "c",
+        "syscall-nr.h": "c"
     }
 }
