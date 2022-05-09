@@ -24,12 +24,16 @@ struct dir_entry
     bool in_use;                        /* In use or free? */
   };
 
+void dir_lock_init(void)
+{
+  lock_init(&dir_lock);
+}
+
 /* Creates a directory with space for ENTRY_CNT entries in the
    given SECTOR.  Returns true if successful, false on failure. */
 bool
 dir_create (disk_sector_t sector, size_t entry_cnt) 
 {
-  lock_init(&dir_lock);
   return inode_create (sector, entry_cnt * sizeof (struct dir_entry));
 }
 

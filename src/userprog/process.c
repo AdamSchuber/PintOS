@@ -11,6 +11,7 @@
 #include "userprog/pagedir.h"  /* pagedir_activate etc. */
 #include "userprog/tss.h"      /* tss_update */
 #include "filesys/file.h"
+#include "filesys/directory.h"
 #include "threads/flags.h"     /* FLAG_* constants */
 #include "threads/thread.h"
 #include "threads/vaddr.h"     /* PHYS_BASE */
@@ -33,7 +34,7 @@
 void process_init(void)
 {
    plist_init(&global_plist);
-;
+   dir_lock_init();
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -228,7 +229,7 @@ start_process (struct parameters_to_start_process* parameters)
   */
   if ( ! success )
   {
-    thread_exit ();
+   thread_exit();
   }
   
   /* Start the user process by simulating a return from an interrupt,
@@ -257,8 +258,9 @@ process_wait (int child_id)
 
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
+  
   // Kolla efter rimligt child_id
-  if(global_plist.content[child_id] == NULL)
+  if (global_plist.content[child_id]->valid_row)
   {
      return -1;
   }
@@ -300,12 +302,17 @@ process_cleanup (void)
   struct thread  *cur = thread_current ();
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
-   status = global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->exit_status;
-  // Cleanup of open file table
+  if (plist_get_pid(&global_plist, (int)thread_current()->tid) != -1)
+    status = global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->exit_status;
+  
+  
   map_for_each(&thread_current()->open_file_table, open_file_table_close);
+  if (plist_get_pid(&global_plist, (int)thread_current()->tid) != -1)
+   global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->is_running = false;
+  
+  // Cleanup of open file table
    
    // Set current proccess as inactive in plist
-  global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->is_running = false;
   
   debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
   
@@ -319,7 +326,9 @@ process_cleanup (void)
   printf("%s: exit(%d)\n", thread_name(), status);
   
    // Sema up so that parent can stop waiting for child to die
-  sema_up(&global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->sema);
+  if (plist_get_pid(&global_plist, (int)thread_current()->tid) != -1)
+   sema_up(&global_plist.content[plist_get_pid(&global_plist, (int)thread_current()->tid)]->sema);
+
   
    // Loop and set all redundant entries as valid for removal
   for (int i = 0; i < PLIST_SIZE; ++i) 

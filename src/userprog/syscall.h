@@ -4,6 +4,9 @@
 #include <lib/stdbool.h>
 #include "filesys/file.h"
 
+bool verify_fix_length(void* start, unsigned length);
+bool verify_variable_length(const char *start);
+
 void handle_plist(void);
 int handle_exec(const char* command_line);
 int handle_wait(int pid);

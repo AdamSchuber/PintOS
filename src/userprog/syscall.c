@@ -16,6 +16,73 @@
 #include <lib/stdio.h>
 #include "devices/timer.h"
 
+/* Verify all addresses from and including 'start' up to but excluding
+ * (start+length). */
+bool verify_fix_length(void *start, unsigned length)
+{
+  if (*(unsigned int*)start >= PHYS_BASE)
+    return false;
+
+  // Check first if start is even in the page directory
+  if (pagedir_get_page(thread_current()->pagedir, start) == NULL)
+    return false;
+
+  // Get the page number for the start addresses page
+  unsigned int prev_pg = pg_no(start);
+
+  // Iterate through all addresses from start to length
+  // and if the page has changed since the previous iteration,
+  // check once again whether the page is in the directory
+  for (unsigned int i = 0; i < length; ++i)
+  {
+    unsigned int curr_pg = pg_no(start + i);
+    if (curr_pg != prev_pg)
+    {
+      prev_pg = curr_pg;
+      void *check_addr = start + i;
+      if (pagedir_get_page(thread_current()->pagedir, check_addr) == NULL)
+        return false;
+    }
+  }
+  return true;
+}
+
+/* Verify all addresses from and including 'start' up to and including
+ * the address first containg a null-character ('\0'). (The way
+ * C-strings are stored.)
+ */
+bool verify_variable_length(const char *start)
+{
+  if (*(unsigned int*)start >= PHYS_BASE)
+    return false;
+
+  // Check first if start is even in the page directory
+  if (pagedir_get_page(thread_current()->pagedir, start) == NULL)
+    return false;
+
+  unsigned int prev_pg = 0, curr_pg = pg_no(start);
+  void *check_addr = start;
+
+  // Iterate as long as check_addr is not NULL terminated end of string,
+  // and if the page has changed since the previous iteration,
+  // check once again whether the page is in the directory
+  do
+  {
+    curr_pg = pg_no(check_addr);
+    if (curr_pg != prev_pg)
+    {
+      prev_pg = curr_pg;
+      if (pagedir_get_page(thread_current()->pagedir, check_addr) == NULL)
+        return false;
+    }
+
+    if (*((char*)check_addr) == '\0')
+      return true;
+
+  } while (++check_addr);
+  return false;
+}
+
 static void syscall_handler(struct intr_frame *);
 
 void handle_plist(void)
@@ -30,6 +97,9 @@ void handle_sleep(int millis)
 
 int handle_exec(const char* command_line)
 {
+  if (!(verify_variable_length(command_line)))
+    handle_exit(-1);
+    
   return process_execute(command_line);
 }
 
@@ -51,6 +121,10 @@ void handle_exit(int status)
 // Return -1 if filedescriptor is incorrect, or chars read if correct
 int handle_read(int fd, char *buffer, unsigned size)
 {
+  if (!(verify_fix_length(buffer, size)))
+    handle_exit(-1);
+    
+
   // Checks if file descriptor is correct for read
   if (fd != STDOUT_FILENO)
   {
@@ -88,6 +162,10 @@ int handle_read(int fd, char *buffer, unsigned size)
 // Return -1 if filedescriptor is incorrect, or chars written if correct
 int handle_write(int fd, char *buffer, unsigned size)
 {
+  if (!(verify_fix_length(buffer, size)))
+    handle_exit(-1);
+
+
   // Checks if file descriptor is correct for write
   if (fd != STDIN_FILENO)
   {
@@ -116,6 +194,9 @@ int handle_write(int fd, char *buffer, unsigned size)
 
 int handle_open(const char *filename)
 {
+  if (!(verify_variable_length(filename)))
+    return -1;
+
   // Check if filename exists in filesystem, returns null if not
   struct file *file_ptr = filesys_open((char *)filename);
   if (file_ptr != NULL)
@@ -147,11 +228,15 @@ void handle_close(int fd)
 
 bool handle_create(const char *file, unsigned initial_size)
 {
+  if (!(verify_variable_length(file)))
+    return -1;
   return filesys_create(file, initial_size);
 }
 
 bool handle_remove(const char *file)
 {
+  if (!(verify_variable_length(file)))
+    return -1;
   return filesys_remove(file);
 }
 
@@ -209,6 +294,19 @@ static void
 syscall_handler(struct intr_frame *f)
 {
   int32_t *esp = (int32_t *)f->esp;
+
+  0 = SYS_WRITE
+  1 = fd
+  2 = buffer
+  3 = size
+  4 = null
+  5 = null
+  6 = null
+  7 = null
+
+  required_args = argc[esp[0]] + 1;
+
+  if (esp[required_args] != null)
 
   switch (esp[0])
   {
