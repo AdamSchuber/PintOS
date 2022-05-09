@@ -28,18 +28,19 @@ bool verify_fix_length(void *start, unsigned length)
     return false;
 
   // Get the page number for the start addresses page
-  unsigned int prev_pg = pg_no(start);
+  unsigned int prev_pg, curr_pg = pg_no(start);
+  void *check_addr = start;
 
   // Iterate through all addresses from start to length
   // and if the page has changed since the previous iteration,
   // check once again whether the page is in the directory
   for (unsigned int i; i < length; ++i)
   {
-    unsigned int curr_pg = pg_no(start + i);
+    curr_pg = pg_no(start + i);
     if (curr_pg != prev_pg)
     {
       prev_pg = curr_pg;
-      void *check_addr = start + i;
+      ++check_addr;
       if (pagedir_get_page(thread_current()->pagedir, check_addr) == NULL)
         return false;
     }
