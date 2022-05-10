@@ -164,7 +164,7 @@ int handle_read(int fd, char *buffer, unsigned size)
 int handle_write(int fd, char *buffer, unsigned size)
 {
   if (!(verify_fix_length(buffer, size)))
-    handle_exit(-1);
+    process_exit(-1);
 
 
   // Checks if file descriptor is correct for write
@@ -298,13 +298,17 @@ syscall_handler(struct intr_frame *f)
 {
   int32_t *esp = (int32_t *)f->esp;
 
+  if (!(is_user_vaddr(esp[0])))
+    return process_exit(-1);
+
+
   int required_args = argc[esp[0]];
 
     // Checks all that all arguments passed thorugh to the sys_call is correct
   if (!(verify_fix_length(esp + 1, sizeof(int) * required_args)))
     return process_exit(-1);
 
-  if (esp[0] >= SYS_NUMBER_OF_CALLS || esp[0] < 0)
+  if ((int)esp[0] >= (int)SYS_NUMBER_OF_CALLS || (int)esp[0] < 0)
     return process_exit(-1);
 
   switch (esp[0])
