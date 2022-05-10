@@ -137,8 +137,8 @@ process_execute (const char *command_line)
         thread_current()->tid,
         command_line, process_id);
 
-   /* Initiates the open file table for the thread/proccess*/
-   map_init(&thread_current()->open_file_table);
+   // /* Initiates the open file table for the thread/proccess*/
+   // map_init(&thread_current()->open_file_table);
   /* MUST be -1 if `load' in `start_process' return false */
   return process_id;
 }
@@ -261,12 +261,10 @@ process_wait (int child_id)
   
   // Kolla efter rimligt child_id
   if (global_plist.content[child_id]->valid_row)
-  {
      return -1;
-  }
 
   /* Yes! You need to do something good here ! */  
-   if (global_plist.content[child_id]->parent_pid == plist_get_pid(&global_plist, thread_current()->tid))
+  if (global_plist.content[child_id]->parent_pid == plist_get_pid(&global_plist, thread_current()->tid))
    {
       sema_down(&global_plist.content[child_id]->sema);
       status = global_plist.content[child_id]->exit_status;

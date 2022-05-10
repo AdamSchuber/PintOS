@@ -8,7 +8,7 @@
 
 void map_init(struct map *m)
 {
-    for (int i = 0; i < MAP_SIZE; ++i)
+    for (int i = 2; i < MAP_SIZE; ++i)
     {
         m->content[i] = NULL;
     }
@@ -36,7 +36,7 @@ key_t map_insert(struct map *m, value_t v)
 // return char* = NULL if no such element was find
 value_t map_find(struct map *m, key_t k)
 {
-    if (k > MAP_SIZE - 1 || k < 0)
+    if (k > MAP_SIZE - 1 || k < 2)
         return NULL;
     
     return m->content[k];
@@ -45,10 +45,9 @@ value_t map_find(struct map *m, key_t k)
 // return value_t = NULL if no such element was find
 value_t map_remove(struct map *m, key_t k)
 {
-    if (k > MAP_SIZE - 1 || k < 0)
+    if (k > MAP_SIZE - 1 || k < 2)
     {
-        value_t null_ptr = NULL;
-        return null_ptr;
+        return NULL;
     }
 
     value_t tmp = m->content[k];

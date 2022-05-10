@@ -20,7 +20,7 @@
  * (start+length). */
 bool verify_fix_length(void *start, unsigned length)
 {
-  if ((unsigned int*)start >= PHYS_BASE || (unsigned int*)start + length >= PHYS_BASE)
+  if (start >= PHYS_BASE || start + length >= PHYS_BASE || length < 0)
     return false;
 
   // Check first if start is even in the page directory
@@ -28,21 +28,22 @@ bool verify_fix_length(void *start, unsigned length)
     return false;
 
   // Get the page number for the start addresses page
-  unsigned int prev_pg = pg_no(start);
+  unsigned int prev_pg = 0, curr_pg = pg_no(start);
 
   // Iterate through all addresses from start to length
   // and if the page has changed since the previous iteration,
   // check once again whether the page is in the directory
   for (unsigned int i = 0; i < length; ++i)
   {
-    if (!(is_user_vaddr(start + i)))
+    void *check_addr = start + i;
+
+    if (!is_user_vaddr(check_addr))
       return false;
 
-    unsigned int curr_pg = pg_no(start + i);
+    curr_pg = pg_no(start + i);
     if (curr_pg != prev_pg)
     {
       prev_pg = curr_pg;
-      void *check_addr = start + i;
       if (pagedir_get_page(thread_current()->pagedir, check_addr) == NULL)
         return false;
     }
@@ -56,7 +57,7 @@ bool verify_fix_length(void *start, unsigned length)
  */
 bool verify_variable_length(const char *start)
 {
-  if ((unsigned int*)start >= PHYS_BASE)
+  if ((unsigned int *)start >= PHYS_BASE)
     return false;
 
   // Check first if start is even in the page directory
@@ -82,7 +83,7 @@ bool verify_variable_length(const char *start)
         return false;
     }
 
-    if (*((char*)check_addr) == '\0')
+    if (*((char *)check_addr) == '\0')
       return true;
 
   } while (++check_addr);
@@ -101,11 +102,11 @@ void handle_sleep(int millis)
   timer_msleep(millis);
 }
 
-int handle_exec(const char* command_line)
+int handle_exec(const char *command_line)
 {
   if (!(verify_variable_length(command_line)))
     process_exit(-1);
-    
+
   return process_execute(command_line);
 }
 
@@ -130,11 +131,8 @@ void handle_exit(int status)
 // Return -1 if filedescriptor is incorrect, or chars read if correct
 int handle_read(int fd, char *buffer, unsigned size)
 {
-  for (int i = 0; i < size; ++i)
-  {
-    if (!verify_fix_length(buffer + i, sizeof(int)) || size < 0)
-      process_exit(-1);
-  }
+  if (!verify_fix_length(buffer, size))
+    process_exit(-1);
 
   // Checks if file descriptor is correct for read
   if (fd != STDOUT_FILENO)
@@ -142,7 +140,7 @@ int handle_read(int fd, char *buffer, unsigned size)
     int num_of_chars = 0;
     // Enters if-block if fd is is standard input, else it is read
     // as a regular file.
-    
+
     // Loops til size is reached, gets characters from input_getc
     // and puts them in buffer and putbuf() to display in program
     if (fd == STDIN_FILENO)
@@ -173,7 +171,6 @@ int handle_write(int fd, char *buffer, unsigned size)
 {
   if (!(verify_fix_length(buffer, size)))
     process_exit(-1);
-
 
   // Checks if file descriptor is correct for write
   if (fd != STDIN_FILENO)
@@ -215,9 +212,8 @@ int handle_open(const char *filename)
     int fd = map_insert(&thread_current()->open_file_table, file_ptr);
     // If file table fails to insert, remove file from file system
     if (fd == -1)
-     {
       filesys_close(file_ptr);
-     }
+  
     return fd;
   }
   return -1;
@@ -276,7 +272,7 @@ int handle_filesize(int fd)
   if (file_ptr != NULL)
     return file_length(file_ptr);
   return -1;
-} 
+}
 
 /*########################################################################*/
 
@@ -305,12 +301,6 @@ const int argc[] = {
 static void
 syscall_handler(struct intr_frame *f)
 {
-  if (f == NULL)
-  {
-    f->eax = -1;
-    process_exit(-1);
-  }
-
   int32_t *esp = (int32_t *)f->esp;
 
   if (!is_user_vaddr(esp) || !verify_fix_length(esp, sizeof(int)))
@@ -341,7 +331,7 @@ syscall_handler(struct intr_frame *f)
     handle_exit(esp[1]);
     break;
   case SYS_EXEC:
-    f->eax = handle_exec((const char*)(esp[1]));
+    f->eax = handle_exec((const char *)(esp[1]));
     break;
   case SYS_WAIT:
     f->eax = handle_wait((int)(esp[1]));

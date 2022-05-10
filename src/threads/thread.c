@@ -115,6 +115,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->magic = THREAD_MAGIC;
 
   /* YES! You may want add stuff here. */
+
+  /* Initiates the open file table for the thread/proccess*/
+   map_init(&t->open_file_table);
+
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.
