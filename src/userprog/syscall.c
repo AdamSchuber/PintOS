@@ -35,6 +35,9 @@ bool verify_fix_length(void *start, unsigned length)
   // check once again whether the page is in the directory
   for (unsigned int i = 0; i < length; ++i)
   {
+    if (!(is_user_vaddr(start + i)))
+      return false;
+
     unsigned int curr_pg = pg_no(start + i);
     if (curr_pg != prev_pg)
     {
@@ -68,6 +71,9 @@ bool verify_variable_length(const char *start)
   // check once again whether the page is in the directory
   do
   {
+    if (!(is_user_vaddr(check_addr)))
+      return false;
+
     curr_pg = pg_no(check_addr);
     if (curr_pg != prev_pg)
     {
@@ -124,9 +130,11 @@ void handle_exit(int status)
 // Return -1 if filedescriptor is incorrect, or chars read if correct
 int handle_read(int fd, char *buffer, unsigned size)
 {
-  if (!(verify_fix_length(buffer, size)) || size < 0)
-    process_exit(-1);
-    
+  for (int i = 0; i < size; ++i)
+  {
+    if (!verify_fix_length(buffer + i, sizeof(int)) || size < 0)
+      process_exit(-1);
+  }
 
   // Checks if file descriptor is correct for read
   if (fd != STDOUT_FILENO)
@@ -205,10 +213,11 @@ int handle_open(const char *filename)
     // Inserts file into the threads open filetable and is given a
     // file descriptor
     int fd = map_insert(&thread_current()->open_file_table, file_ptr);
-
     // If file table fails to insert, remove file from file system
     if (fd == -1)
+     {
       filesys_close(file_ptr);
+     }
     return fd;
   }
   return -1;
@@ -296,20 +305,32 @@ const int argc[] = {
 static void
 syscall_handler(struct intr_frame *f)
 {
+  if (f == NULL)
+  {
+    f->eax = -1;
+    process_exit(-1);
+  }
+
   int32_t *esp = (int32_t *)f->esp;
 
-  if (!(is_user_vaddr(esp[0])))
-    return process_exit(-1);
-
-
-  int required_args = argc[esp[0]];
-
-    // Checks all that all arguments passed thorugh to the sys_call is correct
-  if (!(verify_fix_length(esp + 1, sizeof(int) * required_args)))
-    return process_exit(-1);
+  if (!is_user_vaddr(esp) || !verify_fix_length(esp, sizeof(int)))
+  {
+    f->eax = -1;
+    process_exit(-1);
+  }
 
   if ((int)esp[0] >= (int)SYS_NUMBER_OF_CALLS || (int)esp[0] < 0)
-    return process_exit(-1);
+  {
+    f->eax = -1;
+    process_exit(-1);
+  }
+
+  int required_args = argc[esp[0]];
+  if (!verify_fix_length(esp + 1, sizeof(int) * required_args))
+  {
+    f->eax = -1;
+    process_exit(-1);
+  }
 
   switch (esp[0])
   {
