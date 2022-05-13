@@ -20,7 +20,7 @@
  * (start+length). */
 bool verify_fix_length(void *start, unsigned length)
 {
-  if (start >= PHYS_BASE || start + length >= PHYS_BASE || length < 0)
+  if (start >= PHYS_BASE || length < 0)
     return false;
 
   // Check first if start is even in the page directory
